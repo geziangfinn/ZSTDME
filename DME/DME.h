@@ -4,6 +4,7 @@
 #include "arghandler.h"
 #include "objects.h"
 #include "ctsdb.h"
+#include "topology.h"
 
 #define LINEAR_DELAY 0
 #define ELMORE_DELAY 1
@@ -27,6 +28,7 @@ public:
     vector<Segment> vertexMS; // set of segments
     vector<TRR> vertexTRR;
     vector<double> vertexDistE;
+
     TreeTopology *topology;
 
     double totalWirelength;
@@ -55,9 +57,12 @@ public:
         totalWirelength = 0;
     }
 
+    void setTopology(TreeTopology* _topology)
+    {
+        topology=_topology;
+    }
     // Generate embedding
     void ZSTDME(); // Deferred-Merge Embedding
-
     void topDown();
     void bottomUp();
 

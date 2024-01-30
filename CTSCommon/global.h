@@ -126,11 +126,6 @@ inline bool double_less(double a, double b) // return true if a < b
     return a - b < -1.0 * EPS;
 }
 
-inline bool double_equal(double a, double b)
-{
-    return fabs(a - b) < EPS;
-}
-
 inline bool double_lessorequal(double a, double b)
 {
     return double_less(a, b) || double_equal(a, b);

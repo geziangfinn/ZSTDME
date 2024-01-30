@@ -1,6 +1,6 @@
 #include "parser.h"
 
-void ISPD2009Parser::ReadFile(string filePath, CtsDB *db)
+void ISPD2009Parser::ReadFile(string filePath, CTSDB *db)
 {
     ifstream file(filePath);
     string line, label;
@@ -28,6 +28,7 @@ void ISPD2009Parser::ReadFile(string filePath, CtsDB *db)
                     // add inst
                     Sink tempsink;
                     ss2 >> tempsink.name>> tempsink.x >> tempsink.y>>tempsink.capacitance;//2D
+                    tempsink.id=countInst;
                     db->dbSinks.emplace_back(tempsink);
                     countInst++;
                 }
@@ -53,14 +54,4 @@ void ISPD2009Parser::ReadFile(string filePath, CtsDB *db)
             }
         }
     }
-    cout.setf(ios::fixed, ios::floatfield);
-    // for(parser_sink sink:sinks)
-    // {
-    //     cout<<"sink: "<<sink.x<<" "<<sink.y<<" "<<sink.layer<<" "<<sink.capacitance<<endl;
-    // }
-    // cout<<"========================"<<endl;
-    // for(parser_blockage blockage:blockages)
-    // {
-    //     cout<<blockage.llx<<" "<<blockage.lly<<" "<<blockage.urx<<" "<<blockage.ury<<endl;
-    // }
 }

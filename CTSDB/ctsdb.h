@@ -19,5 +19,7 @@ public:
         dbSinks.clear();
         dbBlockages.clear();
     }
+
+    void showCTSdbInfo();
 };
 #endif

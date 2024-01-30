@@ -142,7 +142,7 @@ class TreeNode
 {
 public:
     int id;
-    double load_capacitance; // load from taps
+    double loadCapacitance; // load from taps
     double delay;
     bool buffered = false;
     TRR trr;
@@ -167,32 +167,6 @@ public:
     void set_rc(TreeNode *child) { rightChild = child; }
     void set_par(TreeNode *p) { parent = p; }
     bool isLeaf() { return leftChild == NULL && rightChild == NULL; }
-};
-
-class TreeTopology
-{
-public:
-    TreeNode *root;
-    int leafCount;
-    int nodeCount;
-    unordered_map<int, TreeNode *> idToTreeNodeMap;
-
-    TreeTopology() {}
-    void init()
-    {
-        root = NULL;
-        leafCount = 0;
-        nodeCount = 0;
-        idToTreeNodeMap.clear();
-    }
-
-    void inittree_from_binary(vector<Sink> taps, int sz, vector<int> preOrder, vector<int> inOrder);
-    void inittree_nng(vector<Sink> taps);
-    void constructTree_old(bool modifyCurrentTree = false);
-    void constructTree_from_binary(vector<Sink> taps, vector<int> preOrder, vector<int> inOrder);
-    void layerassignment(vector<pair<int, int>> IdAndLayer);
-    void treeLayerCal();
-    TreeNode *buildTree_from_binary(vector<Sink> taps, vector<int> pre, vector<int> in, int preStart, int preEnd, int inStart, int inEnd);
 };
 
 class Blockage : public CRect

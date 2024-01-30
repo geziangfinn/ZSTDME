@@ -1,0 +1,9 @@
+PROJECT (ZSTDME)
+#SET(CMAKE_C_FLAGS "-O3 -w  -funroll-loops -ffast-math -funit-at-a-time -fPIC")
+# SET(CMAKE_C_FLAGS "-m64 -lX11 -O2 -fPIC -DNDEBUG -ffast-math -Dcimg_display=1 ")
+SET(CMAKE_CXX_FLAGS "-m64 -O3 -fpermissive -std=c++1y -fPIC -fopenmp -funroll-loops -ffast-math -Dcimg_display=1")
+#SET(CMAKE_CXX_FLAGS "-O3 -w -funroll-loops -ffast-math -funit-at-a-time -fPIC -DNDEBUG")
+#SET(CMAKE_EXE_LINKER_FLAGS "-static")
+ADD_SUBDIRECTORY (Parser)
+ADD_SUBDIRECTORY (Topology)
+
