@@ -22,6 +22,7 @@ void TreeTopology::buildTopoUsingNearestNeighborGraph()
         index++;
     }
     int leafCount = db->dbSinks.size();
+    cout<<"leafCount: "<<leafCount<<endl;
     // treeNodes is the S, after every merge merged, the merge node is added to S
     vector<NngNodePair> currentMinimumPairs;
 
@@ -102,7 +103,7 @@ void TreeTopology::buildTopoUsingNearestNeighborGraph()
             preOrderTraversal(curNode->leftChild);
             preOrderTraversal(curNode->rightChild);
             tempsize++;
-            cout << "preing " << curId << endl;
+            //cout << "preing " << curId << endl;
         }
     };
     preOrderTraversal(root);

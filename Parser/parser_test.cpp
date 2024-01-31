@@ -18,6 +18,11 @@ int main(int argc, char *argv[])
 
         string filename = argv[2];
         string::size_type pos = filename.rfind("/");
+        string benchmarkName;
+        int length = filename.length();
+        gArg.Override("benchmarkName", benchmarkName);
+        benchmarkName = filename.substr(pos + 1, length - pos);
+        
         if (pos != string::npos)
         {
             printf("    Path = %s\n", filename.substr(0, pos + 1).c_str());

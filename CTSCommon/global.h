@@ -40,7 +40,7 @@
 
 using namespace std;
 
-#define EPS 1.0E-6 // 1e-6, for now
+#define EPS 1e-1// 1e-2, for now
 const string padding(30, '=');
 
 class Point_2D

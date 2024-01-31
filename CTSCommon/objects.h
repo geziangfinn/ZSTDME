@@ -67,13 +67,14 @@ class Segment
 {
 public:
     Point_2D lowerPoint, higherPoint; // lowerPoint has lower y
-    int id;          // unique id for each segment
+    int id;          // unique id for each segment, -1 for not valid, 0 for valid, -2 for point intersection
     Segment()
     {
         init();
     }
     Segment(Point_2D u, Point_2D v) : lowerPoint(u), higherPoint(v)
     {
+
         if (lowerPoint.y > higherPoint.y) // assume lowerPoint is the lower point
         {
             swap(lowerPoint, higherPoint);
@@ -132,7 +133,7 @@ public:
 
     bool insideTRR(Point_2D point);
 
-    Segment intersectTRR(Segment &seg); //! this function is used for TRRs in top-down phase,
+    Segment TRRintersectSeg(Segment &seg); //! this function is used for TRRs in top-down phase,
                                         //! in which all cores of TRRs are points.
                                         //! And the intersection point is used as solution,
                                         //! which means ignore the other points on ms(v)
