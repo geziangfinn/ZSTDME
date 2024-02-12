@@ -32,9 +32,6 @@ public:
 
     double totalWirelength;
 
-    // string _RUNDIR = "../run_tmp/";
-    // string _DRAWDIR = "../draw/";
-
     vector<Point_2D> treeNodeLocation; // also known as pl in the ZST DME paper by abk
     vector<SteinerPoint *> solution;
 
@@ -66,25 +63,12 @@ public:
     void topDown();
     void bottomUp();
 
-    // void route();
-    // void buildSolution();
-    // void buildSolution_ISPD();
-    // void reportTotalWL();
-    // void writeSolution();
-    // void buildTopology_nngraph(); // nn for nearest neighbor
-    // void buildTopology_from_binary();
-    // void DLE_3D();
-    // void DLE_loop(TreeNode *node);
-    // void NearestAssign(TreeNode *node);
-    // void setdelay_model(int);
     void drawBottomUp();
-    void drawBottomUpMerge(string name, TRR trr1, TRR trr2,Segment merge);
-    void drawTRRPair(string name,TRR trr1, TRR trr2);
-    // void drawSolution();
+    void drawBottomUpMerge(string name, TRR trr1, TRR trr2, Segment merge);
+    void drawTRRPair(string name, TRR trr1, TRR trr2);
 
-    // void draw_blockages();
-    // void bouncing_check();
-    // void count_TSV(); //! this function is for 2-layer chip only
+    void buildSolution();
+    void drawSolution(); 
 
     Segment TRRintersectTRR(TRR &trr1, TRR &trr2);
 

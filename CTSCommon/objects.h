@@ -105,6 +105,7 @@ public:
     }
     double slope();                 // get slope of segment
     Segment intersect(Segment rhs); // rhs: right hand side
+    //todo: segment merge and segment split????
 };
 
 class TRR

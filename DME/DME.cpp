@@ -16,7 +16,6 @@ void ZSTDMERouter::topDown()
 {
 
     treeNodeLocation.resize(topology->nodeCount);
-    solution.resize(topology->nodeCount);
     // auto& rootMergeSegment = vertexMS[topo->root->id];
     Segment &rootMergeSegment = topology->root->trr.core;
     std::function<void(TreeNode *)> preOrderTraversal = [&](TreeNode *curNode)
@@ -60,9 +59,18 @@ void ZSTDMERouter::topDown()
                     cout << "TRR-MS insersection not found" << endl;
                     exit(1);
                 }
-                treeNodeLocation[curNode->id] = merged.lowerPoint; //! why lowerPoint? its said that whatever point on ms is ok,
-                                                                   //! but different choices would determine if we need snaking or not, see the book for details
-                                                                   //
+                treeNodeLocation[curNode->id] =
+                    merged.lowerPoint; //! why lowerPoint? its said that
+                                       //! whatever point on ms is ok, but
+                                       //! different choices would determine if
+                                       //! we need snaking or not, see the book
+                                       //! for details
+
+                if (double_less(L1Dist(treeNodeLocation[curNode->parent->id], treeNodeLocation[curNode->id]), curNode->trr.radius))
+                {
+                    double snakingWirelength = curNode->trr.radius - L1Dist(treeNodeLocation[curNode->parent->id], treeNodeLocation[curNode->id]);
+                    //? how to do exact snaking espacially when there are blockages?
+                }
             }
 
             // cout << "Steiner Point " << curNode->id << " located at " << treeNodeLocation[curNode->id] << endl;
@@ -149,14 +157,13 @@ void ZSTDMERouter::bottomUp()
                 exit(0);
             }
 
-            updateMergeDelay(curNode, curNode->leftChild, curNode->rightChild, e_a, e_b);
-            updateMergeCapacitance(curNode, curNode->leftChild, curNode->rightChild, e_a, e_b); //? there is a same function in RLC_calculation
-
             curNode->leftChild->trr.radius = e_a; //! e_a for leftChild and e_b for rightChild
             curNode->rightChild->trr.radius = e_b;
 
             // intersect trr_a, trr_b to get ms_v
             Segment ms_v = TRRintersectTRR(curNode->leftChild->trr, curNode->rightChild->trr);
+
+            // todo: nine region method to solve for feasible merging segment
 
             if (ms_v.id == -1)
             {
@@ -167,6 +174,9 @@ void ZSTDMERouter::bottomUp()
                 exit(1);
             }
             curNode->trr.core = ms_v;
+
+            updateMergeDelay(curNode, curNode->leftChild, curNode->rightChild, e_a, e_b);
+            updateMergeCapacitance(curNode, curNode->leftChild, curNode->rightChild, e_a, e_b); //? there is a same function in RLC_calculation
         }
         else
         {
@@ -386,6 +396,165 @@ void ZSTDMERouter::drawTRRPair(string name, TRR trr1, TRR trr2)
 
     system(("gnuplot " + outFilePath).c_str());
     cout << BLUE << "[Router]" << RESET << " - Visualize the TRR pair in \'" << outFilePath << "\'.\n";
+}
+void ZSTDMERouter::buildSolution()
+{
+    bool fullSolution = false; //! include L-shapes or include L-shapes as “diagonal wires” to reduce clutter
+
+    if (gArg.CheckExist("fullSolution"))
+    {
+        fullSolution = true;
+    }
+
+    // preorder traversal to buil grsteiner structure
+    solution.resize(topology->nodeCount);
+    std::function<void(TreeNode *)> preOrderTraversal = [&](TreeNode *curNode)
+    {
+        int curId = curNode->id;
+        if (curNode->leftChild != NULL && curNode->rightChild != NULL)
+        {
+            // handle curNode
+            SteinerPoint *curSteiner = solution[curId];
+            auto &lc = curNode->leftChild;
+            auto &rc = curNode->rightChild;
+            SteinerPoint *lcSteiner = new SteinerPoint(treeNodeLocation[curNode->leftChild->id]);
+            SteinerPoint *rcSteiner = new SteinerPoint(treeNodeLocation[curNode->rightChild->id]);
+
+            if (fullSolution)
+            {
+                // Connect lc
+                if (double_equal(curSteiner->x, lcSteiner->x) || double_equal(curSteiner->y, lcSteiner->y))
+                {
+                    lcSteiner->setParent(curSteiner);
+                }
+                else
+                { // Use L-shape
+                    SteinerPoint *middle = new SteinerPoint(Point_2D(curSteiner->x, lcSteiner->y));
+                    lcSteiner->setParent(middle);
+                    middle->setParent(curSteiner);
+                }
+                // Connect rc
+                if (double_equal(curSteiner->x, rcSteiner->x) || double_equal(curSteiner->y, rcSteiner->y))
+                {
+                    rcSteiner->setParent(curSteiner);
+                }
+                else
+                { // Use L-shape
+                    SteinerPoint *middle = new SteinerPoint(Point_2D(curSteiner->x, rcSteiner->y));
+                    rcSteiner->setParent(middle);
+                    middle->setParent(curSteiner);
+                }
+            }
+            else
+            {
+                // Connect lc
+                lcSteiner->setParent(curSteiner);
+                
+                // Connect rc
+                rcSteiner->setParent(curSteiner);
+            }
+            solution[curNode->leftChild->id] = lcSteiner;
+            solution[curNode->rightChild->id] = rcSteiner;
+            preOrderTraversal(curNode->leftChild);
+            preOrderTraversal(curNode->rightChild);
+        }
+        else
+        {
+            // sinks
+            // pl[curId] = vertexMS[curId].p1;
+            return;
+        }
+    };
+    solution[topology->root->id] = new SteinerPoint(treeNodeLocation[topology->root->id]);
+    preOrderTraversal(topology->root);
+}
+
+void ZSTDMERouter::drawSolution()
+{
+
+    string plotPath;
+    string benchmarkName;
+    if (!gArg.GetString("plotPath", &plotPath))
+    {
+        plotPath = "./";
+    }
+    gArg.GetString("benchmarkName", &benchmarkName);
+
+    string outFilePath = plotPath + benchmarkName + "_solution.plt";
+    ofstream outfile(outFilePath.c_str(), ios::out);
+
+    outfile << " " << endl;
+    outfile << "set terminal png size 4000,4000" << endl;
+    outfile << "set output "
+            << "\"" << plotPath << benchmarkName + "_solution"
+            << ".png\"" << endl;
+    // outfile << "set multiplot layout 1, 2" << endl;
+    outfile << "set size ratio -1" << endl;
+    outfile << "set nokey" << endl
+            << endl;
+
+    // for(int i=0; i<cell_list_top.size(); i++){
+    //     outfile << "set label " << i + 2 << " \"" << cell_list_top[i]->get_name() << "\" at " << cell_list_top[i]->get_posX() + cell_list_top[i]->get_width() / 2 << "," << cell_list_top[i]->get_posY() + cell_list_top[i]->get_height() / 2 << " center front" << endl;
+    // }
+    // outfile << "set xrange [0:" << _pChip->get_width() << "]" << endl;
+    // outfile << "set yrange [0:" << _pChip->get_height() << "]" << endl;
+    // outfile << "plot[:][:] '-' w l lt 3 lw 2, '-' with filledcurves closed fc \"grey90\" fs border lc \"red\", '-' with filledcurves closed fc \"yellow\" fs border lc \"black\", '-' w l lt 1" << endl << endl;
+
+    outfile << "plot[:][:]  '-' w l lt 3 lw 2, '-' w p pt 7 ps 1, '-' w p pt 5 ps 2, '-' w l lt 4 lw 2, " << endl
+            << endl;
+
+    outfile << "# TREE" << endl;
+    std::function<void(SteinerPoint *)> traceToSource = [&](SteinerPoint *curNode)
+    {
+        if (curNode->parent == NULL)
+        { // reached source
+            return;
+        }
+        auto &nxtNode = curNode->parent;
+        plotLinePLT(outfile, curNode->x, curNode->y, nxtNode->x, nxtNode->y);
+        traceToSource(nxtNode);
+    };
+    for (int tapId = 0; tapId < db->dbSinks.size(); tapId++)
+    {
+        traceToSource(solution[tapId]);
+    }
+    outfile << "EOF" << endl;
+
+    outfile << "# Sinks" << endl;
+    std::function<void(TreeNode *)> postOrderTraversal_sink = [&](TreeNode *curNode)
+    {
+        int curId = curNode->id;
+        if (curNode->leftChild != NULL && curNode->rightChild != NULL)
+        {
+            postOrderTraversal_sink(curNode->leftChild);
+            postOrderTraversal_sink(curNode->rightChild);
+            return;
+        }
+        else
+        {
+            curNode->trr.drawCore(outfile);
+        }
+    };
+    postOrderTraversal_sink(topology->root);
+    outfile << "EOF" << endl;
+
+    outfile << "# Source" << endl;
+    plotLinePLT(outfile, topology->root->trr.core.lowerPoint.x, topology->root->trr.core.lowerPoint.y, topology->root->trr.core.lowerPoint.x, topology->root->trr.core.lowerPoint.y);
+    outfile << "EOF" << endl;
+
+    outfile << "# Blockages" << endl;
+    for (Blockage block : this->db->dbBlockages)
+    {
+        plotBoxPLT(outfile, block.ll.x, block.ll.y, block.ur.x, block.ll.y, block.ur.x, block.ur.y, block.ll.x, block.ur.y); // counter clock-wise
+    }
+    outfile << "EOF" << endl;
+
+    // outfile << "pause -1 'Press any key to close.'" << endl;
+    outfile.close();
+
+    system(("gnuplot " + outFilePath).c_str());
+
+    cout << BLUE << "[Router]" << RESET << " - Visualize the solution graph in \'" << outFilePath << "\'.\n";
 }
 
 Segment ZSTDMERouter::TRRintersectTRR(TRR &trr1, TRR &trr2)
@@ -612,9 +781,10 @@ Segment ZSTDMERouter::TRRintersectTRR(TRR &trr1, TRR &trr2)
     // }
 
     // for 4*4 check intersect
-    Segment tempseg; //we need this to prevent one scenario:
-    //当两个TRR有边重合（斜率相等），令斜率相等的两边为TRR1.x和TRR2.x，那么，对于TRR1，其中当然还有边TRR1.y与TRR1.x垂直。那么这个循环有可能先返回TRR1.y与TRR2.x的交点！导致错误
-    //为此，当获得point intersection时，不急着返回，再等等看有没有segment intersection
+    Segment tempseg; // we need this to prevent one scenario:
+    // 当两个TRR有边重合（斜率相等），令斜率相等的两边为TRR1.x和TRR2.x，那么，对于TRR1，其中当然还有边TRR1.y与TRR1.x垂直。那么这个循环有可能先返回TRR1.y与TRR2.x的交点！导致错误
+    // 为此，当获得point intersection时，不急着返回，再等等看有没有segment
+    // intersection
     tempseg.id = -1;
     for (auto &seg1 : trr1_Sides)
     {
