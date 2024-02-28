@@ -22,10 +22,10 @@ int main(int argc, char *argv[])
 
     Blockage block;
     Segment seg;
-    int llx = rand();
-    int lly = rand();
-    int urx = rand();
-    int ury = rand();
+    double llx = rand();
+    double lly = rand();
+    double urx = rand();
+    double ury = rand();
 
     llx = llx * RAND_MAX_INVERSE * 4000;
     lly = lly * RAND_MAX_INVERSE * 4000;
@@ -45,16 +45,16 @@ int main(int argc, char *argv[])
     block.ll = Point_2D(llx, lly);
     block.ur = Point_2D(urx, ury);
 
-    int lpx = rand();
-    int lpy = rand();
+    double lpx = rand();
+    double lpy = rand();
     lpx = lpx * RAND_MAX_INVERSE * 4000;
     lpy = lpy * RAND_MAX_INVERSE * 4000;
-    int length = rand();
+    double length = rand();
 
     length = length * RAND_MAX_INVERSE * 4000;
 
     length = min(length, 4000 - lpx);
-    int hpy;
+    double hpy;
     if (slope == 1)
     {
         length = min(length, 4000 - lpy);
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-    int hpx = lpx + length;
+    double hpx = lpx + length;
 
     seg=Segment(Point_2D(lpx, lpy),Point_2D(hpx, hpy));
 
