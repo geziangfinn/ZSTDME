@@ -68,7 +68,7 @@ public:
     void drawTRRPair(string name, TRR trr1, TRR trr2);
 
     void buildSolution();
-    void drawSolution(); 
+    void drawSolution();
 
     Segment TRRintersectTRR(TRR &trr1, TRR &trr2);
 
@@ -76,6 +76,8 @@ public:
     void updateMergeDelay(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb);
     double solveForX(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, double L);
     double solveForLPrime(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, int tag); // see κ prime in the abk paper
+
+    Segment nineRegionBasedFeasibleMergeSegmentCutting(Segment, Segment); // See the paper in README
 };
 
 class BSTDMERouter

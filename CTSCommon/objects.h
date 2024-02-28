@@ -24,9 +24,9 @@ public:
     }
     void init()
     {
-        name="";
-        id=-1;
-        capacitance=0.0;
+        name = "";
+        id = -1;
+        capacitance = 0.0;
     }
 
     string str_xy()
@@ -67,7 +67,7 @@ class Segment
 {
 public:
     Point_2D lowerPoint, higherPoint; // lowerPoint has lower y
-    int id;          // unique id for each segment, -1 for not valid, 0 for valid, -2 for point intersection
+    int id;                           // unique id for each segment, -1 for not valid, 0 for valid, -2 for point intersection
     Segment()
     {
         init();
@@ -77,7 +77,7 @@ public:
 
         if (lowerPoint.y > higherPoint.y) // assume lowerPoint is the lower point
         {
-            swap(lowerPoint, higherPoint);
+            std::swap(lowerPoint, higherPoint);
         }
     }
 
@@ -85,7 +85,7 @@ public:
     {
         if (lowerPoint.y > higherPoint.y)
         {
-            swap(lowerPoint, higherPoint);
+            std::swap(lowerPoint, higherPoint);
         }
     }
     void init()
@@ -105,7 +105,7 @@ public:
     }
     double slope();                 // get slope of segment
     Segment intersect(Segment rhs); // rhs: right hand side
-    //todo: segment merge and segment split????
+    // todo: segment merge and segment split????
 };
 
 class TRR
@@ -135,9 +135,9 @@ public:
     bool insideTRR(Point_2D point);
 
     Segment TRRintersectSeg(Segment &seg); //! this function is used for TRRs in top-down phase,
-                                        //! in which all cores of TRRs are points.
-                                        //! And the intersection point is used as solution,
-                                        //! which means ignore the other points on ms(v)
+                                           //! in which all cores of TRRs are points.
+                                           //! And the intersection point is used as solution,
+                                           //! which means ignore the other points on ms(v)
 };
 
 class TreeNode
@@ -187,5 +187,14 @@ inline double minManhattanDist(TreeNode *nodeLeft, TreeNode *nodeRight)
     assert(distance > 0);
     return distance;
 }
+
+vector<Segment> segmentCutByBlockage(Segment, Blockage);
+
+vector<Segment> segmentCutBy2ParallelLines(Segment, double, double, bool); // true for vertical lines, false for horizontal lines,
+                                                                           // this function is to avoid removing duplicate segments
+                                                                           // when cutting a segment with 2 parallel lines,
+                                                                           // which is a time consuming operation
+
+vector<Segment> segmentCutByLine(Segment, double, bool); // true for vertical lines, false for horizontal lines
 
 #endif

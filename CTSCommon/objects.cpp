@@ -85,15 +85,14 @@ Segment Segment::intersect(Segment rhs)
             Segment ret(lower, upper);
             if (lower == upper)
             {
-                
-                ret.id = 1;// could be a single point intersection, which is an extreme case
+
+                ret.id = 1; // could be a single point intersection, which is an extreme case
             }
             else
             {
                 ret.id = 0;
             }
             return ret;
-        
         }
         else
         {
@@ -262,7 +261,7 @@ Segment TRR::TRRintersectSeg(Segment &seg)
             return intersection;
         }
     }
-    if (insideTRR(seg.lowerPoint) && insideTRR(seg.higherPoint))// ! entire segment is inside TRR, need snaking!
+    if (insideTRR(seg.lowerPoint) && insideTRR(seg.higherPoint)) // ! entire segment is inside TRR, need snaking!
     {
         Segment ret = seg;
         ret.id = 0;
@@ -272,4 +271,272 @@ Segment TRR::TRRintersectSeg(Segment &seg)
     Segment ret;
     ret.id = -1;
     return ret;
+}
+
+vector<Segment> segmentCutByBlockage(Segment seg, Blockage block) // 4 lines(2 vertical and 2 horizontal) -> 9 regions
+{
+    vector<Segment> resultedSegments;
+    // First: cut the segment with 2 vertical lines(x=k), //!x1 is to the left of x2(x1<x2)
+    double x1 = block.ll.x;
+    double x2 = block.ur.x;
+
+    vector<Segment> segmentCutByVerticalLines = segmentCutBy2ParallelLines(seg, x1, x2, true);
+    // Then: cut the resulted segments with 2 horizontal lines(y=k),//! y1<y2, cut every resulted segment from the last stage!!!!
+    double y1 = block.ll.y;
+    double y2 = block.ur.y;
+    for (Segment curSegment : segmentCutByVerticalLines)
+    {
+        cout<<"Segments cut by vertical lines: "<<curSegment<<endl;
+        vector<Segment> segmentCutByHorizontalLines = segmentCutBy2ParallelLines(curSegment, y1, y2, false);
+        resultedSegments.insert(resultedSegments.end(), segmentCutByHorizontalLines.begin(), segmentCutByHorizontalLines.end());
+    }
+    return resultedSegments;
+}
+
+vector<Segment> segmentCutByLine(Segment seg, double line, bool verticalOrHorizontal)
+{
+    // todo: what if the seg is a single point?
+    //! a very important assumption here: slope of the segment == -1 or 1!
+    vector<Segment> resultedSegments; // should return two segments
+    if (verticalOrHorizontal)         // cut by vertical line, x=k
+    {
+        double segXMax = max(seg.lowerPoint.x, seg.higherPoint.x);
+        double segXMin = min(seg.lowerPoint.x, seg.higherPoint.x);
+        if (double_less(segXMax, line) || double_greater(segXMin, line)) // no intersection
+        {
+            resultedSegments.push_back(seg);
+            return resultedSegments; // vector size == 1 means segment is not cut by line
+        }
+        assert(double_lessorequal(segXMin, line) && double_lessorequal(line, segXMax));
+
+        if (double_equal(seg.slope(), 1.0))
+        {
+            // y=x+b, b=y1-x1
+            double b = seg.lowerPoint.y - seg.lowerPoint.x; // pick the lower point as (x1,y1)
+
+            // y=x+b, x=line
+            double crossPointY = line + b;
+            // crossPointX=line
+            Point_2D crossPoint(line, crossPointY);
+            resultedSegments.push_back(Segment(seg.lowerPoint, crossPoint));
+            resultedSegments.push_back(Segment(seg.higherPoint, crossPoint));
+        }
+        else if (double_equal(seg.slope(), -1.0))
+        {
+            // y=-x+b, b=y1+x1
+            double b = seg.lowerPoint.y + seg.lowerPoint.x;
+
+            // y=b-x, x=line
+            double crossPointY = b - line;
+            // crossPointX=line
+            Point_2D crossPoint(line, crossPointY);
+            resultedSegments.push_back(Segment(seg.lowerPoint, crossPoint));
+            resultedSegments.push_back(Segment(seg.higherPoint, crossPoint));
+        }
+        else
+        {
+            cout << RED << "slope error(x=k)!" << RESET << endl;
+            exit(0);
+        }
+    }
+    else // cut by horizontal line, y=k
+    {
+        if (double_less(seg.higherPoint.y, line) || double_greater(seg.lowerPoint.y, line)) // no cross point
+        {
+            resultedSegments.push_back(seg);
+            return resultedSegments; // vector size == 1 means segment is not cut by line
+        }
+        assert(double_lessorequal(seg.lowerPoint.y, line) && double_lessorequal(line, seg.higherPoint.y));
+
+        if (double_equal(seg.slope(), 1.0))
+        {
+            // y=x+b, b=y1-x1
+            double b = seg.lowerPoint.y - seg.lowerPoint.x;
+
+            // x=y-b, y=line
+            double crossPointX = line - b;
+            // crossPointY=line
+            Point_2D crossPoint(crossPointX, line);
+            resultedSegments.push_back(Segment(seg.lowerPoint, crossPoint));
+            resultedSegments.push_back(Segment(seg.higherPoint, crossPoint));
+        }
+        else if (double_equal(seg.slope(), -1.0))
+        {
+            // y=-x+b, b=y1+x1
+            double b = seg.lowerPoint.y + seg.lowerPoint.x;
+
+            // x=b-y, y=line
+            double crossPointX = b - line;
+            // crossPointY=line
+            Point_2D crossPoint(crossPointX, line);
+            resultedSegments.push_back(Segment(seg.lowerPoint, crossPoint));
+            resultedSegments.push_back(Segment(seg.higherPoint, crossPoint));
+        }
+        else
+        {
+            cout << RED << "slope error(y=k)!" << RESET << endl;
+            exit(0);
+        }
+    }
+    return resultedSegments;
+}
+
+vector<Segment> segmentCutBy2ParallelLines(Segment seg, double line1, double line2, bool verticalOrHorizontal)
+{
+    vector<Segment> resultedSegments; // return at most 3 segments
+    if (double_greater(line1, line2))
+    {
+        std::swap(line1, line2); // assume line1 to the left of line2, or below line2
+    }
+
+    assert(double_less(line1, line2));
+
+    if (verticalOrHorizontal) // cut by vertical lines, x=k
+    {
+        double segXMax = std::max(seg.lowerPoint.x, seg.higherPoint.x);
+        double segXMin = std::min(seg.lowerPoint.x, seg.higherPoint.x);
+        if (double_less(segXMax, line1) || double_greater(segXMin, line2)) // seg not cut by either lines
+        {
+            resultedSegments.push_back(seg); // resultedSegments.size==1, return the seg if no intersection
+        }
+        else if (double_lessorequal(line1, segXMin) && double_lessorequal(segXMax, line2)) // seg between two lines(also, not cut by either lines)
+        {
+            resultedSegments.push_back(seg); // resultedSegments.size==1, return the seg if no intersection
+        }
+        else if (double_less(segXMin, line1) && double_less(line2, segXMax)) // seg is cut by both lines
+        {
+            if (double_equal(seg.slope(), 1.0))
+            {
+                // y=x+b, b=y1-x1
+                // crossPointX=line1/line2
+                double b = seg.lowerPoint.y - seg.lowerPoint.x; // pick the lower point as (x1,y1)
+
+                // y=x+b, x=line
+                double crossPoint1Y = line1 + b;
+                double crossPoint2Y = line2 + b;
+
+                Point_2D crossPoint1(line1, crossPoint1Y);
+                Point_2D crossPoint2(line2, crossPoint2Y);
+
+                resultedSegments.push_back(Segment(seg.lowerPoint, crossPoint1));
+                resultedSegments.push_back(Segment(crossPoint1, crossPoint2));
+                resultedSegments.push_back(Segment(crossPoint2, seg.higherPoint)); // resultedSegments.size==3
+            }
+            else if (double_equal(seg.slope(), -1.0))
+            {
+                // y=-x+b, b=y1+x1
+                // crossPointX=line1/line2
+                double b = seg.lowerPoint.x + seg.lowerPoint.y; // pick the lower point as (x1,y1)
+
+                // y=b-x, x=line
+                double crossPoint1Y = b - line1;
+                double crossPoint2Y = b - line2;
+
+                Point_2D crossPoint1(line1, crossPoint1Y);
+                Point_2D crossPoint2(line2, crossPoint2Y);
+
+                resultedSegments.push_back(Segment(seg.lowerPoint, crossPoint1));
+                resultedSegments.push_back(Segment(crossPoint1, crossPoint2));
+                resultedSegments.push_back(Segment(crossPoint2, seg.higherPoint)); // resultedSegments.size==3
+            }
+            else
+            {
+                cout << RED << "slope error(x=k)!" << RESET << endl;
+                exit(0);
+            }
+        }
+        else // seg is cut by either line1 or line2
+        {
+            vector<Segment> segmentCutByX1 = segmentCutByLine(seg, line1, true);
+            vector<Segment> segmentCutByX2 = segmentCutByLine(seg, line2, true);
+            // segmentCutByX.size==1 means not cut by that line
+
+            assert(!((segmentCutByX1.size() > 1) && (segmentCutByX2.size() > 1)));
+
+            if (segmentCutByX1.size() > 1)
+            {
+                resultedSegments.insert(resultedSegments.end(), segmentCutByX1.begin(), segmentCutByX1.end());
+            }
+            if (segmentCutByX2.size() > 1)
+            {
+                resultedSegments.insert(resultedSegments.end(), segmentCutByX2.begin(), segmentCutByX2.end());
+            }
+            assert(resultedSegments.size() == 2); // resultedSegments.size==2
+        }
+    }
+    else // cut by horizontal lines, y=k
+    {
+        double segYMax = seg.higherPoint.y;
+        double segYMin = seg.lowerPoint.y;
+        assert(segYMin<segYMax);
+        if (double_less(segYMax, line1) || double_greater(segYMin, line2)) // seg not cut by either lines
+        {
+            resultedSegments.push_back(seg); // resultedSegments.size==1, return the seg if no intersection
+        }
+        else if (double_lessorequal(line1, segYMin) && double_lessorequal(segYMax, line2)) // seg between two lines(also, not cut by either lines)
+        {
+            resultedSegments.push_back(seg); // resultedSegments.size==1, return the seg if no intersection
+        }
+        else if (double_less(segYMin, line1) && double_less(line2, segYMax)) // seg is cut by both lines
+        {
+            if (double_equal(seg.slope(), 1.0))
+            {
+                // y=x+b, b=y1-x1
+                // crossPointY=line1 or line2
+                double b = seg.lowerPoint.y - seg.lowerPoint.x; // pick the lower point as (x1,y1)
+
+                // x=y-b, y=line
+                double crossPoint1X = line1 - b;
+                double crossPoint2X = line2 - b;
+
+                Point_2D crossPoint1(crossPoint1X, line1);
+                Point_2D crossPoint2(crossPoint2X, line2);
+
+                resultedSegments.push_back(Segment(seg.lowerPoint, crossPoint1));
+                resultedSegments.push_back(Segment(crossPoint1, crossPoint2));
+                resultedSegments.push_back(Segment(crossPoint2, seg.higherPoint)); // resultedSegments.size==3
+            }
+            else if (double_equal(seg.slope(), -1.0))
+            {
+                // y=-x+b, b=y1+x1
+                // crossPointY=line1 or line2
+                double b = seg.lowerPoint.x + seg.lowerPoint.y; // pick the lower point as (x1,y1)
+
+                // x=b-y, y=line
+                double crossPoint1X = b - line1;
+                double crossPoint2X = b - line2;
+
+                Point_2D crossPoint1(crossPoint1X, line1);
+                Point_2D crossPoint2(crossPoint2X, line2);
+
+                resultedSegments.push_back(Segment(seg.lowerPoint, crossPoint1));
+                resultedSegments.push_back(Segment(crossPoint1, crossPoint2));
+                resultedSegments.push_back(Segment(crossPoint2, seg.higherPoint)); // resultedSegments.size==3
+            }
+            else
+            {
+                cout << RED << "slope error(y=k)!" << RESET << endl;
+                exit(0);
+            }
+        }
+        else // seg is cut by either line1 or line2
+        {
+            vector<Segment> segmentCutByY1 = segmentCutByLine(seg, line1, false);
+            vector<Segment> segmentCutByY2 = segmentCutByLine(seg, line2, false);
+            // segmentCutByX.size==1 means not cut by that line
+
+            assert(!((segmentCutByY1.size() > 1) && (segmentCutByY2.size() > 1)));
+
+            if (segmentCutByY1.size() > 1)
+            {
+                resultedSegments.insert(resultedSegments.end(), segmentCutByY1.begin(), segmentCutByY1.end());
+            }
+            if (segmentCutByY2.size() > 1)
+            {
+                resultedSegments.insert(resultedSegments.end(), segmentCutByY2.begin(), segmentCutByY2.end());
+            }
+            assert(resultedSegments.size() == 2); // resultedSegments.size == 2
+        }
+    }
+    return resultedSegments;
 }

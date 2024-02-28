@@ -40,8 +40,13 @@
 
 using namespace std;
 
-#define EPS 1e-1// 1e-2, for now
+#define EPS 1e-1 // 1e-2, for now
 const string padding(30, '=');
+
+inline bool double_equal(double a, double b)
+{
+    return fabs(a - b) < EPS;
+}
 
 class Point_2D
 {
@@ -60,7 +65,7 @@ public:
     {
         x = y = 0.0; //!! 0.0!!!!
     }
-    bool operator==(const Point_2D &rhs) const { return x == rhs.x && y == rhs.y; }
+    bool operator==(const Point_2D &rhs) const { return double_equal(x, rhs.x) && double_equal(y, rhs.y); }
     friend inline std::ostream &operator<<(std::ostream &os, const Point_2D &gp)
     {
         os << "(" << gp.x << "," << gp.y << ")";
@@ -110,11 +115,6 @@ public:
         return getHeight() * getWidth();
     }
 };
-
-inline bool double_equal(double a, double b)
-{
-    return fabs(a - b) < EPS;
-}
 
 inline bool double_greater(double a, double b) // return true if a > b
 {

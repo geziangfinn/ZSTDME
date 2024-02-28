@@ -7,4 +7,5 @@ SET(CMAKE_CXX_FLAGS "-m64 -O3 -fpermissive -std=c++1y -fPIC -fopenmp -funroll-lo
 ADD_SUBDIRECTORY (Parser)
 ADD_SUBDIRECTORY (Topology)
 ADD_SUBDIRECTORY (DME)
+ADD_SUBDIRECTORY (CTSCommon)
 

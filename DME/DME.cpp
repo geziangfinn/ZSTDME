@@ -10,6 +10,8 @@ void ZSTDMERouter::ZSTDME()
     topDown();
 
     cout << padding << "Finished DME" << padding << endl;
+    buildSolution();
+    drawSolution();
 }
 
 void ZSTDMERouter::topDown()
@@ -449,7 +451,7 @@ void ZSTDMERouter::buildSolution()
             {
                 // Connect lc
                 lcSteiner->setParent(curSteiner);
-                
+
                 // Connect rc
                 rcSteiner->setParent(curSteiner);
             }
@@ -889,4 +891,12 @@ double ZSTDMERouter::solveForLPrime(TreeNode *nodeLeft, TreeNode *nodeRight, Tre
         numerator = sqrt(2 * UNIT_RESISTANCE * UNIT_CAPACITANCE * (nodeRight->delay - nodeLeft->delay) + alphaC * alphaC - 2 * UNIT_RESISTANCE * UNIT_CAPACITANCE) - alphaC;
     }
     return numerator / (UNIT_RESISTANCE * UNIT_CAPACITANCE);
+}
+
+Segment ZSTDMERouter::nineRegionBasedFeasibleMergeSegmentCutting(Segment merge, Segment child)
+{
+    for (Blockage curBlockage : db->dbBlockages)
+    {
+    }
+    return Segment();
 }
