@@ -7,11 +7,6 @@
 #include "topology.h"
 #include "plotter.h"
 
-#define LINEAR_DELAY 0
-#define ELMORE_DELAY 1
-#define UNIT_CAPACITANCE 1
-#define UNIT_RESISTANCE 1
-
 class ZSTDMERouter
 {
 public:
@@ -62,20 +57,13 @@ public:
     void ZSTDME(); // Deferred-Merge Embedding
     void topDown();
     void bottomUp();
+    void repairSolution();// eliminate overlap between clock tree and obstacles, performed after buildSolution. Ignore its impact on skew for now. It will cause higher wirelength, for sure
 
     void drawBottomUp();
     void drawBottomUpMerge(string name, TRR trr1, TRR trr2, Segment merge);
-    void drawTRRPair(string name, TRR trr1, TRR trr2);
 
     void buildSolution();
     void drawSolution();
-
-    Segment TRRintersectTRR(TRR &trr1, TRR &trr2);
-
-    void updateMergeCapacitance(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb);
-    void updateMergeDelay(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb);
-    double solveForX(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, double L);
-    double solveForLPrime(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, int tag); // see κ prime in the abk paper
 
     Segment nineRegionBasedFeasibleMergeSegmentCutting(Segment, Segment); // See the paper in README
 };

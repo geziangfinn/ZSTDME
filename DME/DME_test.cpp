@@ -53,9 +53,24 @@ int main(int argc, char *argv[])
     }
     ctsdb->showCTSdbInfo();
     TreeTopology *topo = new TreeTopology(ctsdb);
-    topo->buildTopoUsingNearestNeighborGraph();
+    //topo->buildTopoUsingNearestNeighborGraph();
+    topo->buildTreeUsingNearestNeighborGraph();
     ZSTDMERouter *router = new ZSTDMERouter(ctsdb);
-    router->setDelayModel(ELMORE_DELAY);
+    int delayModel=ELMORE_DELAY;
+    if(gArg.CheckExist("linearDelay"))
+    {
+        delayModel=LINEAR_DELAY;
+    }
+    router->setDelayModel(delayModel);
     router->setTopology(topo);
-    router->ZSTDME();
+
+    //router->ZSTDME();
+    router->drawBottomUp();
+
+    // 2. Find Exact Node Location(top down)
+    router->topDown();
+
+    cout << padding << "Finished DME" << padding << endl;
+    router->buildSolution();
+    router->drawSolution();
 }

@@ -2,6 +2,7 @@
 #define OBJECTS_H
 #include "global.h"
 #include "arghandler.h"
+
 class Sink : public Point_2D
 {
 public:
@@ -133,6 +134,7 @@ public:
     void drawCore(ofstream &stream);
 
     bool insideTRR(Point_2D point);
+    Point_2D getMiddlePoint();
 
     Segment TRRintersectSeg(Segment &seg); //! this function is used for TRRs in top-down phase,
                                            //! in which all cores of TRRs are points.
@@ -171,9 +173,19 @@ public:
     bool isLeaf() { return leftChild == NULL && rightChild == NULL; }
 };
 
-class Blockage : public CRect
+class Blockage : public Rect
 {
 };
+
+inline double minManhattanDist(Segment ms1, Segment ms2)
+{
+    // ms: merge segment in ZST/DME
+    double distance = min(L1Dist(ms1.lowerPoint, ms2.lowerPoint), L1Dist(ms1.lowerPoint, ms2.higherPoint));
+    distance = min(distance, L1Dist(ms1.higherPoint, ms2.lowerPoint));
+    distance = min(distance, L1Dist(ms1.higherPoint, ms2.higherPoint)); // but why need to calc 2*2 possiblity?
+    assert(distance > 0);
+    return distance;
+}
 
 inline double minManhattanDist(TreeNode *nodeLeft, TreeNode *nodeRight)
 {
@@ -181,10 +193,11 @@ inline double minManhattanDist(TreeNode *nodeLeft, TreeNode *nodeRight)
     auto ms1 = nodeLeft->trr.core;
     auto ms2 = nodeRight->trr.core;
     // get |e_a|, |e_b|
-    double distance = min(L1Dist(ms1.lowerPoint, ms2.lowerPoint), L1Dist(ms1.lowerPoint, ms2.higherPoint));
-    distance = min(distance, L1Dist(ms1.higherPoint, ms2.lowerPoint));
-    distance = min(distance, L1Dist(ms1.higherPoint, ms2.higherPoint)); // but why need to calc 2*2 possiblity?
-    assert(distance > 0);
+    // double distance = min(L1Dist(ms1.lowerPoint, ms2.lowerPoint), L1Dist(ms1.lowerPoint, ms2.higherPoint));
+    // distance = min(distance, L1Dist(ms1.higherPoint, ms2.lowerPoint));
+    // distance = min(distance, L1Dist(ms1.higherPoint, ms2.higherPoint)); // but why need to calc 2*2 possiblity?
+    // assert(distance > 0);
+    double distance = minManhattanDist(ms1, ms2);
     return distance;
 }
 
@@ -197,4 +210,17 @@ vector<Segment> segmentCutBy2ParallelLines(Segment, double, double, bool); // tr
 
 vector<Segment> segmentCutByLine(Segment, double, bool); // true for vertical lines, false for horizontal lines
 
+int regionNumber(Segment, Blockage);
+
+bool insideRect(Point_2D, Rect);
+
+Point_2D moveToClosestBoundary(Point_2D, Rect);
+
+void updateMergeCapacitance(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb);
+void updateMergeDelay(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb);
+double solveForX(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, double L);
+double solveForLPrime(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, int tag); // see κ prime in the abk paper
+Segment TRRintersectTRR(TRR &trr1, TRR &trr2);
+void drawTRRPair(string name, TRR trr1, TRR trr2);
+void TRRBasedMerge(TreeNode *, TreeNode *, TreeNode *);
 #endif

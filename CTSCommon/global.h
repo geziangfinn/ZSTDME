@@ -18,6 +18,7 @@
 #include <cmath>
 #include <functional>
 #include <limits>
+#include <queue>
 #include "arghandler.h"
 
 #define RESET "\033[0m"
@@ -43,6 +44,49 @@ using namespace std;
 #define EPS 1e-1 // 1e-2, for now
 const string padding(30, '=');
 
+#define LINEAR_DELAY 0
+#define ELMORE_DELAY 1
+#define UNIT_CAPACITANCE 1
+#define UNIT_RESISTANCE 1
+
+enum REGION
+{
+    DUMMY,
+    UP_LEFT,
+    UP_MID,
+    UP_RIGHT,
+    MID_LEFT,
+    MID_MID,
+    MID_RIGHT,
+    BOTTOM_LEFT,
+    BOTTOM_MID,
+    BOTTOM_RIGHT
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    //  here we start from 1, to be consistent with the sung kyu lym paper
+};
+
+enum POSTION_VERTICAL
+{
+    UP,
+    MID_VERTICAL,
+    BOTTOM
+};
+
+enum POSTION_HORIZONTAL
+{
+    LEFT,
+    MID_HORIZONTAL,
+    RIGHT
+};
+
+enum DIRECTION
+{
+    VERTICAL,
+    HORIZONTAL
+};
+
 inline bool double_equal(double a, double b)
 {
     return fabs(a - b) < EPS;
@@ -52,14 +96,9 @@ class Point_2D
 {
 public:
     double x, y;
-    Point_2D() { init(); }
+    Point_2D() { SetZero(); }
     Point_2D(double _x, double _y) : x(_x), y(_y)
     {
-    }
-    void init()
-    {
-        x = 0;
-        y = 0;
     }
     void SetZero()
     {
@@ -73,10 +112,10 @@ public:
     }
 };
 
-class CRect
+class Rect
 {
 public:
-    CRect()
+    Rect()
     {
         Init();
     }
@@ -91,15 +130,15 @@ public:
     }
     Point_2D ll; // ll: lower left coor
     Point_2D ur; // ur: upper right coor
-    float getWidth()
+    double getWidth()
     {
-        float width = ur.x - ll.x;
+        double width = ur.x - ll.x;
         assert(width > 0.0);
         return width;
     }
-    float getHeight()
+    double getHeight()
     {
-        float height = ur.y - ll.y;
+        double height = ur.y - ll.y;
         assert(height > 0.0);
         return height;
     }
@@ -110,7 +149,7 @@ public:
         center.y += 0.5 * this->getHeight();
         return center;
     }
-    float getArea()
+    double getArea()
     {
         return getHeight() * getWidth();
     }
@@ -138,4 +177,81 @@ inline bool double_greaterorequal(double a, double b)
 
 inline double L1Dist(Point_2D p1, Point_2D p2) { return abs(p1.x - p2.x) + abs(p1.y - p2.y); }
 
+class Interval
+{
+public:
+    Interval()
+    {
+        Init();
+    }
+    Interval(double _start, double _end)
+    {
+        if (double_greater(_start, _end))
+        {
+            std::swap(_start, _end);
+        }
+        start = _start;
+        end = _end;
+    }
+    void Init()
+    {
+        start = 0;
+        end = 0;
+    }
+
+    bool inside(double xORy)
+    {
+        return (double_less(start, xORy) && double_less(xORy, end)); //! less, not less or equal!(open interval)
+    }
+
+    bool include(Interval interval)
+    {
+        return (double_lessorequal(this->start, interval.start) && double_lessorequal(interval.end, this->end));
+    }
+
+    double start;
+    double end;
+};
+
+class RectilinearLine
+{
+public:
+    RectilinearLine()
+    {
+        Init();
+    }
+    void Init()
+    {
+        ll.SetZero();
+        ur.SetZero();
+        direction = -1;
+    };
+
+    RectilinearLine(Point_2D point1, Point_2D point2)
+    {
+        if (double_equal(point1.x, point2.x))
+        {
+            direction = VERTICAL;
+            ll.x = ur.x = point1.x;
+            ll.y = min(point1.y, point2.y);
+            ur.y = max(point1.y, point2.y);
+        }
+        else if (double_equal(point1.y, point2.y))
+        {
+            direction = HORIZONTAL;
+            ll.y = ur.y = point1.y;
+            ll.x = min(point1.x, point2.x);
+            ur.x = max(point1.x, point2.x);
+        }
+        else
+        {
+            cerr << "NOT A RECTILINEAR LINE!\n";
+            exit(0);
+        }
+    }
+
+    Point_2D ll; // lower OR left, not lower left because this is a line
+    Point_2D ur; // upper OR right
+    int direction;
+};
 #endif

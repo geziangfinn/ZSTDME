@@ -1,3 +1,4 @@
+#include "objects.h"
 #include <objects.h>
 #include "plotter.h"
 double Segment::slope()
@@ -234,6 +235,13 @@ bool TRR::insideTRR(Point_2D point)
     return (point.x + point.y) >= negtive_slope_interceps[0] && (point.x + point.y) <= negtive_slope_interceps[1] && (point.y - point.x) >= positive_slope_interceps[0] && (point.y - point.x) <= positive_slope_interceps[1];
 }
 
+Point_2D TRR::getMiddlePoint()
+{
+    double x = 0.5 * (core.lowerPoint.x, core.higherPoint.x);
+    double y = 0.5 * (core.lowerPoint.y, core.higherPoint.y);
+    return Point_2D(x, y);
+}
+
 Segment TRR::TRRintersectSeg(Segment &seg)
 {
     //! -1 for no intersection!
@@ -286,7 +294,7 @@ vector<Segment> segmentCutByBlockage(Segment seg, Blockage block) // 4 lines(2 v
     double y2 = block.ur.y;
     for (Segment curSegment : segmentCutByVerticalLines)
     {
-        cout<<"Segments cut by vertical lines: "<<curSegment<<endl;
+        cout << "Segments cut by vertical lines: " << curSegment << endl;
         vector<Segment> segmentCutByHorizontalLines = segmentCutBy2ParallelLines(curSegment, y1, y2, false);
         resultedSegments.insert(resultedSegments.end(), segmentCutByHorizontalLines.begin(), segmentCutByHorizontalLines.end());
     }
@@ -468,7 +476,7 @@ vector<Segment> segmentCutBy2ParallelLines(Segment seg, double line1, double lin
     {
         double segYMax = seg.higherPoint.y;
         double segYMin = seg.lowerPoint.y;
-        assert(segYMin<segYMax);
+        assert(segYMin < segYMax);
         if (double_less(segYMax, line1) || double_greater(segYMin, line2)) // seg not cut by either lines
         {
             resultedSegments.push_back(seg); // resultedSegments.size==1, return the seg if no intersection
@@ -539,4 +547,630 @@ vector<Segment> segmentCutBy2ParallelLines(Segment seg, double line1, double lin
         }
     }
     return resultedSegments;
+}
+
+int regionNumber(Segment curSeg, Blockage curBlockage)
+{
+    double x1 = curBlockage.ll.x;
+    double x2 = curBlockage.ur.x;
+    double y1 = curBlockage.ll.y;
+    double y2 = curBlockage.ur.y;
+
+    int horizontalPositionNumber;
+    int verticalPositionNumber;
+
+    double midX = (curSeg.lowerPoint.x + curSeg.higherPoint.x) * 0.5;
+    double midY = (curSeg.lowerPoint.y + curSeg.higherPoint.y) * 0.5;
+
+    //! we use mid point here to determine the region of a seg,
+    //! because although after segmentCutByBlockage,
+    //! the entire resulted segment should be included in exactly ONE region,
+    //! and any point on the segment should be ok, using higher or lower point may
+    //! cause bugs because of boundary conditions. SO, we use mid point here.
+    //! mid point is compatible even when the curSeg is a point, if we make sure there is no float accuracy problems
+
+    if (double_lessorequal(midX, x1)) //? if seg is a point and is on the edge of regions,
+                                      //? we should not determine it as a point in the MID region?
+                                      //? because the connectivity of the MID region is bad? see skl paper
+    {
+        horizontalPositionNumber = LEFT;
+    }
+    else if (double_less(x1, midX) && double_less(midX, x2))
+    {
+        horizontalPositionNumber = MID_HORIZONTAL;
+    }
+    else if (double_lessorequal(x2, midX))
+    {
+        horizontalPositionNumber = RIGHT;
+    }
+    else
+    {
+        cerr << "horizontal region number error\n";
+        exit(0);
+    }
+
+    if (double_lessorequal(midY, y1))
+    {
+        verticalPositionNumber = BOTTOM;
+    }
+    else if (double_less(y1, midY) && double_less(midY, y2))
+    {
+        verticalPositionNumber = MID_VERTICAL;
+    }
+    else if (double_lessorequal(y2, midY))
+    {
+        verticalPositionNumber = UP;
+    }
+    else
+    {
+        cerr << "vertical region number error\n";
+        exit(0);
+    }
+
+    switch (verticalPositionNumber)
+    {
+    case UP:
+        switch (horizontalPositionNumber)
+        {
+        case LEFT:
+            return UP_LEFT;
+            break;
+
+        case MID_HORIZONTAL:
+            return UP_MID;
+            break;
+
+        case RIGHT:
+            return UP_RIGHT;
+            break;
+
+        default:
+            cout << "error: horizontalPositionNumber is not in enum\n";
+            exit(0);
+            break;
+        }
+        break;
+
+    case MID_VERTICAL:
+        switch (horizontalPositionNumber)
+        {
+        case LEFT:
+            return MID_LEFT;
+            break;
+
+        case MID_HORIZONTAL:
+            return MID_MID;
+            break;
+
+        case RIGHT:
+            return MID_RIGHT;
+            break;
+
+        default:
+            cout << "error: horizontalPositionNumber is not in enum\n";
+            exit(0);
+            break;
+        }
+        break;
+
+    case BOTTOM:
+        switch (horizontalPositionNumber)
+        {
+        case LEFT:
+            return BOTTOM_LEFT;
+            break;
+
+        case MID_HORIZONTAL:
+            return BOTTOM_MID;
+            break;
+
+        case RIGHT:
+            return BOTTOM_RIGHT;
+            break;
+
+        default:
+            cout << "error: horizontalPositionNumber is not in enum\n";
+            exit(0);
+            break;
+        }
+        break;
+
+    default:
+        cout << "error: vertcalPositionNumber is not in enum\n";
+        exit(0);
+        break;
+    }
+}
+
+bool insideRect(Point_2D point, Rect rectangle)
+{
+    Interval horizontal(rectangle.ll.x, rectangle.ur.x);
+    Interval vertical(rectangle.ll.y, rectangle.ur.y);
+    return horizontal.inside(point.x) && vertical.inside(point.y);
+}
+
+Point_2D moveToClosestBoundary(Point_2D point, Rect rectangle)
+{
+    if (!insideRect(point, rectangle))
+    {
+        return point;
+    }
+    double toTop = rectangle.ur.y - point.y;
+    double toBottom = point.y - rectangle.ll.y;
+    double toLeft = point.x - rectangle.ll.x;
+    double toRight = rectangle.ur.x - point.x;
+    vector<double> distances;
+    distances.push_back(toBottom);
+    distances.push_back(toRight);
+    distances.push_back(toLeft);
+    distances.push_back(toTop);
+
+    sort(distances.begin(), distances.end());
+
+    if (double_equal(distances[0], toTop))
+    {
+        point.y = rectangle.ur.y;
+        return point;
+    }
+
+    if (double_equal(distances[0], toBottom))
+    {
+        point.y = rectangle.ll.y;
+        return point;
+    }
+
+    if (double_equal(distances[0], toLeft))
+    {
+        point.x = rectangle.ll.x;
+        return point;
+    }
+
+    if (double_equal(distances[0], toRight))
+    {
+        point.x = rectangle.ur.x;
+        return point;
+    }
+
+    return point;
+}
+
+void updateMergeCapacitance(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb)
+{
+
+    double mergeCapacitance = nodeLeft->loadCapacitance + nodeRight->loadCapacitance + UNIT_CAPACITANCE * (ea + eb);
+    // 考虑了buffer insertion的电容update
+    //  if(delta_C > c_constraint){
+    //      nodeMerge->load_capacitance = 300;
+    //      nodeMerge->buffered=true;
+    //      buffercount++;
+    //      //nodeMerge->needBuffer = 1;
+    //      return;
+    //  }
+    nodeMerge->loadCapacitance = mergeCapacitance;
+}
+
+void updateMergeDelay(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb)
+{
+    double delayToLeft;
+    double delayToRight;
+
+    int delayModel = ELMORE_DELAY;
+    if (gArg.CheckExist("linearDelay"))
+    {
+        delayModel = LINEAR_DELAY;
+    }
+
+    if (delayModel == LINEAR_DELAY)
+    {
+        delayToLeft = nodeLeft->delay + ea;
+        delayToRight = nodeRight->delay + eb;
+    }
+    else if (delayModel == ELMORE_DELAY) // refer to the abk paper for this
+    {
+        delayToLeft = nodeLeft->delay + 0.5 * UNIT_RESISTANCE * UNIT_CAPACITANCE * ea * ea +
+                      UNIT_RESISTANCE * nodeLeft->loadCapacitance * ea;
+        delayToRight = nodeRight->delay + 0.5 * UNIT_RESISTANCE * UNIT_CAPACITANCE * eb * eb +
+                       UNIT_RESISTANCE * nodeRight->loadCapacitance * eb;
+    }
+
+    nodeMerge->delay = max(delayToLeft, delayToRight);
+}
+
+double solveForX(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, double L) // refer to the abk paper for this
+{
+    // x is the x in abk paper, and ea=x, eb=L-x,
+    double numerator = (nodeRight->delay - nodeLeft->delay) + UNIT_RESISTANCE * L * (nodeRight->loadCapacitance + 0.5 * UNIT_CAPACITANCE * L);
+    double denominator = UNIT_RESISTANCE * (nodeLeft->loadCapacitance + nodeRight->loadCapacitance + UNIT_CAPACITANCE * L);
+    double x = numerator / denominator;
+    return x;
+}
+
+double solveForLPrime(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, int tag)
+{
+
+    // tag = 0: |eb| = L'
+    // tag = 1: |ea| = L'
+    double alphaC;
+    double numerator;
+    if (tag == 0)
+    {
+        alphaC = UNIT_RESISTANCE * nodeRight->loadCapacitance; // see abk paper
+        numerator = sqrt(2 * UNIT_RESISTANCE * UNIT_CAPACITANCE * (nodeLeft->delay - nodeRight->delay) + alphaC * alphaC - 2 * UNIT_RESISTANCE * UNIT_CAPACITANCE) - alphaC;
+    }
+    else
+    {
+        alphaC = UNIT_RESISTANCE * nodeLeft->loadCapacitance;
+        numerator = sqrt(2 * UNIT_RESISTANCE * UNIT_CAPACITANCE * (nodeRight->delay - nodeLeft->delay) + alphaC * alphaC - 2 * UNIT_RESISTANCE * UNIT_CAPACITANCE) - alphaC;
+    }
+    return numerator / (UNIT_RESISTANCE * UNIT_CAPACITANCE);
+}
+
+void drawTRRPair(string name, TRR trr1, TRR trr2)
+{
+
+    string plotPath;
+    string benchmarkName;
+    if (!gArg.GetString("plotPath", &plotPath))
+    {
+        plotPath = "./";
+    }
+    gArg.GetString("benchmarkName", &benchmarkName);
+
+    string outFilePath = plotPath + benchmarkName + name + "_TRR_PAIR.plt";
+    ofstream outfile(outFilePath.c_str(), ios::out);
+
+    cout << "outputFilPath: " << endl;
+
+    outfile << " " << endl;
+    outfile << "set terminal png size 4000,4000" << endl;
+    outfile << "set output "
+            << "\"" << plotPath + benchmarkName + name << "_TRR_PAIR"
+            << ".png\"" << endl;
+    // outfile << "set multiplot layout 1, 2" << endl;
+    outfile << "set size ratio -1" << endl;
+    outfile << "set nokey" << endl
+            << endl;
+
+    // for(int i=0; i<cell_list_top.size(); i++){
+    //     outfile << "set label " << i + 2 << " \"" << cell_list_top[i]->get_name() << "\" at " << cell_list_top[i]->get_posX() + cell_list_top[i]->get_width() / 2 << "," << cell_list_top[i]->get_posY() + cell_list_top[i]->get_height() / 2 << " center front" << endl;
+    // }
+    // outfile << "set xrange [0:" << _pChip->get_width() << "]" << endl;
+    // outfile << "set yrange [0:" << _pChip->get_height() << "]" << endl;
+    // outfile << "plot[:][:] '-' w l lt 3 lw 2, '-' with filledcurves closed fc \"grey90\" fs border lc \"red\", '-' with filledcurves closed fc \"yellow\" fs border lc \"black\", '-' w l lt 1" << endl << endl;
+
+    outfile << "plot[:][:]  '-' w l lt 3 lw 2, '-'  w l lt 7 lw 16" << endl
+            << endl;
+
+    outfile << "# TRR" << endl;
+    trr1.drawTRR(outfile);
+    trr2.drawTRR(outfile);
+    outfile << "EOF" << endl;
+
+    outfile << "# TRR cores" << endl;
+    trr1.drawCore(outfile);
+    trr2.drawCore(outfile);
+    outfile << "EOF" << endl;
+
+    // outfile << "pause -1 'Press any key to close.'" << endl;
+    outfile.close();
+
+    system(("gnuplot " + outFilePath).c_str());
+    cout << BLUE << "[Router]" << RESET << " - Visualize the TRR pair in \'" << outFilePath << "\'.\n";
+}
+
+Segment TRRintersectTRR(TRR &trr1, TRR &trr2)
+{
+    // get four edges
+    // cout << "Merging: " << trr1 << " and " << trr2 << endl;
+    vector<Point_2D> trr1_boundary_grid;
+    vector<Point_2D> trr2_boundary_grid;
+    vector<Segment> trr1_Sides;
+    vector<Segment> trr2_Sides;
+    assert(trr1.radius != 0 || trr2.radius != 0);
+
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // todo: what if a core is a leaf and its radius is 0? judge if its in a trr, but we didn't run into this case?
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    //! if there is one trr's radius = 0
+    if (trr1.radius == 0 || trr2.radius == 0)
+    {
+        if (trr1.radius == 0)
+        {
+
+            if (trr2.core.slope() > 0)
+            {
+                trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y - trr2.radius);
+                trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x + trr2.radius, trr2.core.higherPoint.y);
+                trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x, trr2.core.higherPoint.y + trr2.radius);
+                trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x - trr2.radius, trr2.core.lowerPoint.y); // clock-wise
+            }
+            else if (trr2.core.slope() < 0)
+            {
+                trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x + trr2.radius, trr2.core.lowerPoint.y);
+                trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x, trr2.core.higherPoint.y + trr2.radius);
+                trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x - trr2.radius, trr2.core.higherPoint.y);
+                trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y - trr2.radius); // clock-wise
+            }
+            else
+            { // leaf node
+                trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y - trr2.radius);
+                trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x + trr2.radius, trr2.core.lowerPoint.y);
+                trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y + trr2.radius);
+                trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x - trr2.radius, trr2.core.lowerPoint.y); // clock-wise
+            }
+
+            for (int i = 0; i < 3; i++)
+            {
+                trr2_Sides.emplace_back(trr2_boundary_grid[i], trr2_boundary_grid[i + 1]);
+            }
+            trr2_Sides.emplace_back(trr2_boundary_grid[3], trr2_boundary_grid[0]);
+
+            for (auto &seg2 : trr2_Sides)
+            {
+                // cout<<"seg1: "<<seg1<<"seg2: "<<seg2<<endl;
+                Segment seg = trr1.core.intersect(seg2); //! seg should be a single point in most cases
+                // ? could there be 2 intersection points for core and trr sides?
+                if (seg.id == 0)
+                {
+                    return seg;
+                }
+                else if (seg.id == 1) // single point intersection
+                {
+                    if (trr2.insideTRR(trr1.core.lowerPoint))
+                    {
+                        return Segment(seg.lowerPoint, trr1.core.lowerPoint);
+                    }
+                    else if (trr2.insideTRR(trr1.core.higherPoint))
+                    {
+                        return Segment(seg.lowerPoint, trr1.core.higherPoint);
+                    }
+                }
+            }
+            //! if trr1.core is completely inside trr2
+            if (trr2.insideTRR(trr1.core.lowerPoint) && trr2.insideTRR(trr1.core.higherPoint))
+            {
+                Segment trr1core(trr1.core);
+                trr1core.id = 0;
+                return trr1core;
+            }
+            cout << endl
+                 << trr2.insideTRR(trr1.core.lowerPoint) << " ff " << trr2.insideTRR(trr1.core.higherPoint) << endl;
+        }
+        else
+        {
+            if (trr1.core.slope() > 0)
+            {
+                trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y - trr1.radius);
+                trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x + trr1.radius, trr1.core.higherPoint.y);
+                trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x, trr1.core.higherPoint.y + trr1.radius);
+                trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x - trr1.radius, trr1.core.lowerPoint.y); // clock-wise
+            }
+            else if (trr1.core.slope() < 0)
+            {
+                trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x + trr1.radius, trr1.core.lowerPoint.y);
+                trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x, trr1.core.higherPoint.y + trr1.radius);
+                trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x - trr1.radius, trr1.core.higherPoint.y);
+                trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y - trr1.radius); // clock-wise
+            }
+            else
+            { // leaf node
+                trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y - trr1.radius);
+                trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x + trr1.radius, trr1.core.lowerPoint.y);
+                trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y + trr1.radius);
+                trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x - trr1.radius, trr1.core.lowerPoint.y); // clock-wise
+            }
+
+            for (int i = 0; i < 3; i++)
+            {
+                trr1_Sides.emplace_back(trr1_boundary_grid[i], trr1_boundary_grid[i + 1]);
+            }
+            trr1_Sides.emplace_back(trr1_boundary_grid[3], trr1_boundary_grid[0]);
+
+            for (auto &seg1 : trr1_Sides)
+            {
+                // cout<<"seg1: "<<seg1<<"seg2: "<<seg2<<endl;
+                Segment seg = trr2.core.intersect(seg1); //! seg should be a single point in most cases
+                // ? could there be 2 intersection points for core and trr sides?
+                if (seg.id == 0)
+                {
+                    return seg;
+                }
+                else if (seg.id == 1) // return single point
+                {
+                    if (trr1.insideTRR(trr2.core.lowerPoint))
+                    {
+                        return Segment(seg.lowerPoint, trr2.core.lowerPoint);
+                    }
+                    else if (trr1.insideTRR(trr2.core.higherPoint))
+                    {
+                        return Segment(seg.lowerPoint, trr2.core.higherPoint);
+                    }
+                }
+            }
+            if (trr1.insideTRR(trr2.core.lowerPoint) && trr1.insideTRR(trr2.core.higherPoint))
+            {
+                Segment trr2core(trr2.core);
+                trr2core.id = 0;
+                return trr2core;
+            }
+            cout << endl
+                 << trr1.insideTRR(trr2.core.lowerPoint) << " gg " << trr1.insideTRR(trr2.core.higherPoint) << endl;
+        }
+
+        cout << "Cannot find intersection between two TRRs when one TRR has radius == 0" << endl;
+        for (auto &seg1 : trr1_Sides)
+        {
+            for (auto &seg2 : trr2_Sides)
+            {
+                if (double_equal(seg1.slope(), seg2.slope()))
+                {
+                    cout << "equal slope: " << endl;
+                    // check if 4 point same line but rejected due to precision problems
+                    cout << (seg2.lowerPoint.y - seg1.lowerPoint.y) * (seg1.higherPoint.x - seg1.lowerPoint.x) << " " << (seg1.higherPoint.y - seg1.lowerPoint.y) * (seg2.lowerPoint.x - seg1.lowerPoint.x);
+                }
+            }
+        }
+        drawTRRPair("bottomup_debug", trr1, trr2);
+        Segment ret;
+        ret.id = -1;
+        return ret;
+    }
+    // cout<<"radius check*******888\n";
+    //  if both trr's radius > 0
+    if (trr1.core.slope() > 0)
+    {
+        trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y - trr1.radius);
+        trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x + trr1.radius, trr1.core.higherPoint.y);
+        trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x, trr1.core.higherPoint.y + trr1.radius);
+        trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x - trr1.radius, trr1.core.lowerPoint.y); // clock-wise
+    }
+    else if (trr1.core.slope() < 0)
+    {
+        trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x + trr1.radius, trr1.core.lowerPoint.y);
+        trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x, trr1.core.higherPoint.y + trr1.radius);
+        trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x - trr1.radius, trr1.core.higherPoint.y);
+        trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y - trr1.radius); // clock-wise
+    }
+    else
+    { // leaf node
+        trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y - trr1.radius);
+        trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x + trr1.radius, trr1.core.lowerPoint.y);
+        trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y + trr1.radius);
+        trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x - trr1.radius, trr1.core.lowerPoint.y); // clock-wise
+    }
+
+    if (trr2.core.slope() > 0)
+    {
+        trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y - trr2.radius);
+        trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x + trr2.radius, trr2.core.higherPoint.y);
+        trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x, trr2.core.higherPoint.y + trr2.radius);
+        trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x - trr2.radius, trr2.core.lowerPoint.y); // clock-wise
+    }
+    else if (trr2.core.slope() < 0)
+    {
+        trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x + trr2.radius, trr2.core.lowerPoint.y);
+        trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x, trr2.core.higherPoint.y + trr2.radius);
+        trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x - trr2.radius, trr2.core.higherPoint.y);
+        trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y - trr2.radius); // clock-wise
+    }
+    else
+    { // leaf node
+        trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y - trr2.radius);
+        trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x + trr2.radius, trr2.core.lowerPoint.y);
+        trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y + trr2.radius);
+        trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x - trr2.radius, trr2.core.lowerPoint.y); // clock-wise
+    }
+
+    for (int i = 0; i < 3; i++)
+    {
+        trr1_Sides.emplace_back(trr1_boundary_grid[i], trr1_boundary_grid[i + 1]);
+        trr2_Sides.emplace_back(trr2_boundary_grid[i], trr2_boundary_grid[i + 1]);
+    }
+    trr1_Sides.emplace_back(trr1_boundary_grid[3], trr1_boundary_grid[0]);
+    trr2_Sides.emplace_back(trr2_boundary_grid[3], trr2_boundary_grid[0]);
+
+    // cout << "Print trr1's sides" << endl;
+    // for (auto& seg1 : trr1_Sides) {
+    //     cout << seg1 << endl;
+    // }
+
+    // cout << "Print trr2's sides" << endl;
+
+    // for (auto& seg2 : trr2_Sides) {
+    //     cout << seg2 << endl;
+    // }
+
+    // for 4*4 check intersect
+    Segment tempseg; // we need this to prevent one scenario:
+    // 当两个TRR有边重合（斜率相等），令斜率相等的两边为TRR1.x和TRR2.x，那么，对于TRR1，其中当然还有边TRR1.y与TRR1.x垂直。那么这个循环有可能先返回TRR1.y与TRR2.x的交点！导致错误
+    // 为此，当获得point intersection时，不急着返回，再等等看有没有segment
+    // intersection
+    tempseg.id = -1;
+    for (auto &seg1 : trr1_Sides)
+    {
+        for (auto &seg2 : trr2_Sides)
+        {
+            Segment seg = seg1.intersect(seg2);
+            if (seg.id == 0)
+            {
+                return seg;
+            }
+            if (seg.id == 1)
+            {
+                tempseg = seg;
+            }
+        }
+    }
+    if (tempseg.id == 1)
+    {
+        return tempseg;
+    }
+
+    cout << "Cannot find intersection between two TRRs" << endl;
+
+    for (auto &seg1 : trr1_Sides)
+    {
+        for (auto &seg2 : trr2_Sides)
+        {
+            if (double_equal(seg1.slope(), seg2.slope()))
+            {
+                cout << "equal slope: " << endl;
+                // check if 4 point same line but rejected due to precision problems
+                cout << (seg2.lowerPoint.y - seg1.lowerPoint.y) * (seg1.higherPoint.x - seg1.lowerPoint.x) << " " << (seg1.higherPoint.y - seg1.lowerPoint.y) * (seg2.lowerPoint.x - seg1.lowerPoint.x) << endl;
+            }
+        }
+    }
+    drawTRRPair("bottomup_debug", trr1, trr2);
+    Segment ret;
+    ret.id = -1;
+    return ret;
+}
+
+void TRRBasedMerge(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight)
+{
+    double L = minManhattanDist(nodeLeft, nodeRight);
+    double e_a; // radius of TRR_a
+    double e_b; // radius of TRR_b, e_a, e_b are used in the book or the abk paper as well
+                //! e_a for leftChild and e_b for rightChild
+    // using Elmore delay here
+    double x = solveForX(nodeLeft, nodeRight, nodeMerge, L);
+    if (double_greaterorequal(x, 0.0) && double_lessorequal(x, L))
+    {
+        e_a = x;
+        e_b = L - x;
+    }
+    else if (double_less(x, 0.0))
+    {
+        e_a = 0.0;
+        e_b = solveForLPrime(nodeLeft, nodeRight, nodeMerge, 0);
+        assert(double_greater(e_b, L));
+    }
+    else if (double_less(L, x))
+    {
+        e_b = 0.0;
+        e_a = solveForLPrime(nodeLeft, nodeRight, nodeMerge, 1);
+        assert(double_greater(e_a, L));
+    }
+
+    nodeLeft->trr.radius = e_a; //! e_a for leftChild and e_b for rightChild
+    nodeRight->trr.radius = e_b;
+
+    // intersect trr_a, trr_b to get ms_v
+    Segment ms_v = TRRintersectTRR(nodeLeft->trr, nodeRight->trr);
+
+    // todo: nine region method to solve for feasible merging segment, and recalculate ea and eb
+
+    if (ms_v.id == -1)
+    {
+        cout << "Merge failure" << endl;
+        cout << "TRR 1: " << nodeLeft->trr << endl;
+        cout << "TRR 2: " << nodeRight->trr << endl;
+
+        exit(1);
+    }
+    nodeMerge->trr.core = ms_v;
+
+    updateMergeDelay(nodeMerge, nodeLeft, nodeRight, e_a, e_b);
+    updateMergeCapacitance(nodeMerge, nodeLeft, nodeRight, e_a, e_b); //? there is a same function in RLC_calculation
 }

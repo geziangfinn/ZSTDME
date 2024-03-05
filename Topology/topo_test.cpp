@@ -29,5 +29,6 @@ int main(int argc, char *argv[])
     }
     ctsdb->showCTSdbInfo();
     TreeTopology* topo=new TreeTopology(ctsdb);
-    topo->buildTopoUsingNearestNeighborGraph();
+    //topo->buildTopoUsingNearestNeighborGraph();
+    topo->buildTreeUsingNearestNeighborGraph();
 }
