@@ -6,3 +6,4 @@
 ### todo: snaking in top down!!!! single point test for blockage avoidance
 ### NNGGRID: see the paper: clock aware low power placement
 ### todo: calculate time of each part of the algorithm
+### added clock tree repair
