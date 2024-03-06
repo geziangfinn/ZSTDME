@@ -41,7 +41,7 @@
 
 using namespace std;
 
-#define EPS 1e-1 // 1e-2, for now
+#define EPS 1e-5 // 1e-2, for now
 const string padding(30, '=');
 
 #define LINEAR_DELAY 0
@@ -89,7 +89,7 @@ enum DIRECTION
 
 inline bool double_equal(double a, double b)
 {
-    return fabs(a - b) < EPS;
+    return fabs(a - b) <= EPS;
 }
 
 class Point_2D

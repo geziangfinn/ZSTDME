@@ -136,7 +136,7 @@ public:
     bool insideTRR(Point_2D point);
     Point_2D getMiddlePoint();
 
-    Segment TRRintersectSeg(Segment &seg); //! this function is used for TRRs in top-down phase,
+    Segment TRRintersectSeg(Segment seg); //! this function is used for TRRs in top-down phase,
                                            //! in which all cores of TRRs are points.
                                            //! And the intersection point is used as solution,
                                            //! which means ignore the other points on ms(v)
@@ -223,4 +223,5 @@ double solveForLPrime(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMer
 Segment TRRintersectTRR(TRR &trr1, TRR &trr2);
 void drawTRRPair(string name, TRR trr1, TRR trr2);
 void TRRBasedMerge(TreeNode *, TreeNode *, TreeNode *);
+bool segmentOnSameLine(Segment, Segment);
 #endif

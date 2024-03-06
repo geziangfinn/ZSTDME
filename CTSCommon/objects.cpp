@@ -5,11 +5,11 @@ double Segment::slope()
 {
     if (isPoint())
     {
-        return 0;
+        return 0.0;
     }
     if (higherPoint.x == lowerPoint.x)
     {
-        return 0;
+        return 0.0;
     }
     double slope = 1.0 * (lowerPoint.y - higherPoint.y) / (lowerPoint.x - higherPoint.x);
     if (!(double_equal(slope, 1.0) || double_equal(slope, -1.0)))
@@ -26,10 +26,18 @@ Segment Segment::intersect(Segment rhs)
     //! -1 for no intersection, 0 for segment intersection, 1 for point intersection
     double cur_slope = slope();
     double rhs_slope = rhs.slope();
+    if (rhs.isPoint() && this->isPoint())
+    {
+        cout << "points intersect: " << rhs << " " << *this << endl;
+        Segment ret = rhs;
+        ret.id = -1;
+        return ret;
+    }
     assert(!(rhs.isPoint() && this->isPoint()));
 
     if (rhs.isPoint() || this->isPoint()) //! if current segment is intersecting a single grid point, or current segment is a point!(happend in top down phase)
     {
+        //cout<<"point\n";
         if (this->isPoint())
         {
             //! set rhs as the point
@@ -39,7 +47,7 @@ Segment Segment::intersect(Segment rhs)
             rhs = swap; //! potential bug if overwrite *this??
         }
         Segment ret = rhs;
-        if (double_equal((rhs.lowerPoint.y - lowerPoint.y) * (higherPoint.x - lowerPoint.x), (higherPoint.y - lowerPoint.y) * (rhs.lowerPoint.x - lowerPoint.x))) // check if 4 points same line
+        if (segmentOnSameLine(rhs, *this)) // check if 4 points same line
         {
             if (double_lessorequal(lowerPoint.y, rhs.lowerPoint.y) && double_lessorequal(rhs.lowerPoint.y, higherPoint.y)) //! check if rhs.lowerPoint is on the segment
             {
@@ -53,8 +61,8 @@ Segment Segment::intersect(Segment rhs)
     }
     if (double_equal(cur_slope, rhs_slope))
     { // equal slope
-        // cout<<" "<<(rhs.lowerPoint.y - lowerPoint.y) * (higherPoint.x - lowerPoint.x)<<" "<<(higherPoint.y - lowerPoint.y) * (rhs.lowerPoint.x - lowerPoint.x)<<endl;
-        if (double_equal((rhs.lowerPoint.y - lowerPoint.y) * (higherPoint.x - lowerPoint.x), (higherPoint.y - lowerPoint.y) * (rhs.lowerPoint.x - lowerPoint.x))) // check if 4 points same line
+        //cout<<" "<<(rhs.lowerPoint.y - lowerPoint.y) * (higherPoint.x - lowerPoint.x)<<" "<<(higherPoint.y - lowerPoint.y) * (rhs.lowerPoint.x - lowerPoint.x)<<endl;
+        if (segmentOnSameLine(rhs, *this)) // check if 4 points same line
         {
             assert(rhs.lowerPoint.y <= rhs.higherPoint.y && lowerPoint.y <= higherPoint.y);
             Point_2D upper, lower;
@@ -106,8 +114,8 @@ Segment Segment::intersect(Segment rhs)
     {
         // cout<<"slope1: "<<cur_slope<<" slope2: "<<rhs_slope<<endl;
         // cout<<"SEG1: "<<*this<<"SEG2: "<<rhs<<endl;
-        // different slope for two segments, might be 1 point or 0
-        //! check if two lines cross each other
+        // different slope for two segments, might be 1 ;point or 0
+        //cout<<"check if two lines cross each other\n";
         double A1 = higherPoint.y - lowerPoint.y;
         // double B1 = higherPoint.x - lowerPoint.x;
         double B1 = lowerPoint.x - higherPoint.x;
@@ -130,6 +138,7 @@ Segment Segment::intersect(Segment rhs)
         }
         else
         {
+            //cout<<"intersection point: "<<Point_2D(x, y)<<endl;
             ret.id = -1;
         }
         return ret;
@@ -242,7 +251,7 @@ Point_2D TRR::getMiddlePoint()
     return Point_2D(x, y);
 }
 
-Segment TRR::TRRintersectSeg(Segment &seg)
+Segment TRR::TRRintersectSeg(Segment seg)
 {
     //! -1 for no intersection!
     vector<Point_2D> trr_boundary_grid;
@@ -261,9 +270,10 @@ Segment TRR::TRRintersectSeg(Segment &seg)
     //     cout << seg1 << endl;
     // }
     // cout<<"\ntop-dwon\n";
-    for (auto &side : trr_Sides)
+    for (Segment side : trr_Sides)
     {
         Segment intersection = side.intersect(seg);
+        // cout<<"side: "<<side<<" "<<seg<<endl;
         if (intersection.id != -1)
         {
             return intersection;
@@ -795,12 +805,12 @@ double solveForLPrime(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMer
     if (tag == 0)
     {
         alphaC = UNIT_RESISTANCE * nodeRight->loadCapacitance; // see abk paper
-        numerator = sqrt(2 * UNIT_RESISTANCE * UNIT_CAPACITANCE * (nodeLeft->delay - nodeRight->delay) + alphaC * alphaC - 2 * UNIT_RESISTANCE * UNIT_CAPACITANCE) - alphaC;
+        numerator = sqrt(2 * UNIT_RESISTANCE * UNIT_CAPACITANCE * (nodeLeft->delay - nodeRight->delay) + alphaC * alphaC) - alphaC;
     }
     else
     {
         alphaC = UNIT_RESISTANCE * nodeLeft->loadCapacitance;
-        numerator = sqrt(2 * UNIT_RESISTANCE * UNIT_CAPACITANCE * (nodeRight->delay - nodeLeft->delay) + alphaC * alphaC - 2 * UNIT_RESISTANCE * UNIT_CAPACITANCE) - alphaC;
+        numerator = sqrt(2 * UNIT_RESISTANCE * UNIT_CAPACITANCE * (nodeRight->delay - nodeLeft->delay) + alphaC * alphaC) - alphaC;
     }
     return numerator / (UNIT_RESISTANCE * UNIT_CAPACITANCE);
 }
@@ -838,7 +848,7 @@ void drawTRRPair(string name, TRR trr1, TRR trr2)
     // outfile << "set yrange [0:" << _pChip->get_height() << "]" << endl;
     // outfile << "plot[:][:] '-' w l lt 3 lw 2, '-' with filledcurves closed fc \"grey90\" fs border lc \"red\", '-' with filledcurves closed fc \"yellow\" fs border lc \"black\", '-' w l lt 1" << endl << endl;
 
-    outfile << "plot[:][:]  '-' w l lt 3 lw 2, '-'  w l lt 7 lw 16" << endl
+    outfile << "plot[:][:]  '-' w l lt 3 lw 2, '-'  w l lt 7 lw 10" << endl
             << endl;
 
     outfile << "# TRR" << endl;
@@ -878,14 +888,14 @@ Segment TRRintersectTRR(TRR &trr1, TRR &trr2)
         if (trr1.radius == 0)
         {
 
-            if (trr2.core.slope() > 0)
+            if (double_greater(trr2.core.slope(), 0.0))
             {
                 trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y - trr2.radius);
                 trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x + trr2.radius, trr2.core.higherPoint.y);
                 trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x, trr2.core.higherPoint.y + trr2.radius);
                 trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x - trr2.radius, trr2.core.lowerPoint.y); // clock-wise
             }
-            else if (trr2.core.slope() < 0)
+            else if (double_less(trr2.core.slope(), 0.0))
             {
                 trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x + trr2.radius, trr2.core.lowerPoint.y);
                 trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x, trr2.core.higherPoint.y + trr2.radius);
@@ -939,14 +949,14 @@ Segment TRRintersectTRR(TRR &trr1, TRR &trr2)
         }
         else
         {
-            if (trr1.core.slope() > 0)
+            if (double_greater(trr1.core.slope(), 0.0))
             {
                 trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y - trr1.radius);
                 trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x + trr1.radius, trr1.core.higherPoint.y);
                 trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x, trr1.core.higherPoint.y + trr1.radius);
                 trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x - trr1.radius, trr1.core.lowerPoint.y); // clock-wise
             }
-            else if (trr1.core.slope() < 0)
+            else if (double_less(trr1.core.slope(), 0.0))
             {
                 trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x + trr1.radius, trr1.core.lowerPoint.y);
                 trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x, trr1.core.higherPoint.y + trr1.radius);
@@ -1018,14 +1028,14 @@ Segment TRRintersectTRR(TRR &trr1, TRR &trr2)
     }
     // cout<<"radius check*******888\n";
     //  if both trr's radius > 0
-    if (trr1.core.slope() > 0)
+    if (double_greater(trr1.core.slope(), 0.0))
     {
         trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y - trr1.radius);
         trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x + trr1.radius, trr1.core.higherPoint.y);
         trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x, trr1.core.higherPoint.y + trr1.radius);
         trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x - trr1.radius, trr1.core.lowerPoint.y); // clock-wise
     }
-    else if (trr1.core.slope() < 0)
+    else if (double_less(trr1.core.slope(), 0.0))
     {
         trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x + trr1.radius, trr1.core.lowerPoint.y);
         trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x, trr1.core.higherPoint.y + trr1.radius);
@@ -1173,4 +1183,27 @@ void TRRBasedMerge(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight)
 
     updateMergeDelay(nodeMerge, nodeLeft, nodeRight, e_a, e_b);
     updateMergeCapacitance(nodeMerge, nodeLeft, nodeRight, e_a, e_b); //? there is a same function in RLC_calculation
+}
+
+bool segmentOnSameLine(Segment seg1, Segment seg2) //
+{
+    //! assumptions of this function!!: this function is for a segment and a point or for 2 segments with same slopes
+    //  use lower point of seg1 and seg2 to calculate the slope of connection
+    //! bug: when a point is right on the lower or higher point of a segment
+    if (seg1.lowerPoint == seg2.lowerPoint)
+    {
+        return true;
+    }
+    double slope = (seg1.lowerPoint.y - seg2.lowerPoint.y) / (seg1.lowerPoint.x - seg2.lowerPoint.x);
+    //cout<<"delta slope: "<<slope<<endl;
+    if (double_equal(seg1.slope(), 0.0))
+    {
+        return double_equal(slope, seg2.slope());
+    }
+    else
+    {
+        //cout<<setprecision(9)<<"1: "<<slope<<" 2: "<<seg1.slope()<<" equal: "<<double_equal(slope, seg1.slope())<<endl;
+        return double_equal(slope, seg1.slope());
+    }
+    return false;
 }

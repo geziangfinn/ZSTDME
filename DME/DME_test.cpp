@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 
     //router->ZSTDME();
     router->drawBottomUp();
-
+    cout<<"drawn bottomup"<<endl;
     // 2. Find Exact Node Location(top down)
     router->topDown();
 

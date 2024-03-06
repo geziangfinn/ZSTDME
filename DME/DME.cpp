@@ -57,7 +57,9 @@ void ZSTDMERouter::topDown()
                 if (merged.id == -1)
                 {
                     drawTRRPair("bottomup", curNode->trr, curNode->parent->trr);
-                    drawTRRPair("topdown", trr_par, TRR(curNode->trr.core, 0));
+                    drawTRRPair("topdown", trr_par, TRR(curNode->trr.core, 0.0));
+                    cout<<"child trr core: "<<curNode->trr.core<<endl;
+                    cout<<"parent trr : "<<trr_par<<endl;
                     cout << "TRR-MS insersection not found" << endl;
                     exit(1);
                 }
