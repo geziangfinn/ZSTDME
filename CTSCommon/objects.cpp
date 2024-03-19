@@ -759,6 +759,10 @@ double solveForX(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, d
     double numerator = (nodeRight->delay - nodeLeft->delay) + UNIT_RESISTANCE * L * (nodeRight->loadCapacitance + 0.5 * UNIT_CAPACITANCE * L);
     double denominator = UNIT_RESISTANCE * (nodeLeft->loadCapacitance + nodeRight->loadCapacitance + UNIT_CAPACITANCE * L);
     double x = numerator / denominator;
+    if (!double_less(x, 0.0) && !double_greater(x, 0.0)) //!!!!
+    {
+        x = 0.0;
+    }
     return x;
 }
 
