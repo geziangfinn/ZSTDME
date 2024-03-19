@@ -47,7 +47,7 @@ void ZSTDMERouter::topDown()
                 //     cout << 3 << endl;
                 // }
                 // Segment merged = trr_par.intersect(vertexMS[curNode->id]);
-                Segment merged = trr_par.TRRintersectSeg(curNode->trr.core);
+                Segment merged = TRRintersectSeg(trr_par, curNode->trr.core);
 
                 // if(merged.isLeaf() == false){
                 //     cout << trr_par << " intersecting "<< vertexMS[curNode->id] <<  endl;
@@ -58,8 +58,8 @@ void ZSTDMERouter::topDown()
                 {
                     drawTRRPair("bottomup", curNode->trr, curNode->parent->trr);
                     drawTRRPair("topdown", trr_par, TRR(curNode->trr.core, 0.0));
-                    cout<<"child trr core: "<<curNode->trr.core<<endl;
-                    cout<<"parent trr : "<<trr_par<<endl;
+                    cout << "child trr core: " << curNode->trr.core << endl;
+                    cout << "parent trr : " << trr_par << endl;
                     cout << "TRR-MS insersection not found" << endl;
                     exit(1);
                 }
@@ -230,7 +230,7 @@ void ZSTDMERouter::repairSolution()
                         Interval curLineLength(curLine.ll.x, curLine.ur.x);
                         if (curLineLength.include(width))
                         {
-                            //detour, with the nearest horizontal boundary of the blockage(top or bottom boundary)
+                            // detour, with the nearest horizontal boundary of the blockage(top or bottom boundary)
                         }
                     }
                 }

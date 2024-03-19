@@ -21,130 +21,130 @@ double Segment::slope()
     return slope;
 }
 
-Segment Segment::intersect(Segment rhs)
-{
-    //! -1 for no intersection, 0 for segment intersection, 1 for point intersection
-    double cur_slope = slope();
-    double rhs_slope = rhs.slope();
-    if (rhs.isPoint() && this->isPoint())
-    {
-        cout << "points intersect: " << rhs << " " << *this << endl;
-        Segment ret = rhs;
-        ret.id = -1;
-        return ret;
-    }
-    assert(!(rhs.isPoint() && this->isPoint()));
+// Segment Segment::intersect(Segment rhs)
+// {
+//     //! -1 for no intersection, 0 for segment intersection, 1 for point intersection
+//     double cur_slope = slope();
+//     double rhs_slope = rhs.slope();
+//     if (rhs.isPoint() && this->isPoint())
+//     {
+//         cout << "points intersect: " << rhs << " " << *this << endl;
+//         Segment ret = rhs;
+//         ret.id = -1;
+//         return ret;
+//     }
+//     assert(!(rhs.isPoint() && this->isPoint()));
 
-    if (rhs.isPoint() || this->isPoint()) //! if current segment is intersecting a single grid point, or current segment is a point!(happend in top down phase)
-    {
-        //cout<<"point\n";
-        if (this->isPoint())
-        {
-            //! set rhs as the point
-            Segment swap;
-            swap = *this;
-            *this = rhs;
-            rhs = swap; //! potential bug if overwrite *this??
-        }
-        Segment ret = rhs;
-        if (segmentOnSameLine(rhs, *this)) // check if 4 points same line
-        {
-            if (double_lessorequal(lowerPoint.y, rhs.lowerPoint.y) && double_lessorequal(rhs.lowerPoint.y, higherPoint.y)) //! check if rhs.lowerPoint is on the segment
-            {
-                Segment ret = rhs;
-                ret.id = 1; // return single point intersection
-                return ret;
-            }
-        }
-        ret.id = -1;
-        return ret;
-    }
-    if (double_equal(cur_slope, rhs_slope))
-    { // equal slope
-        //cout<<" "<<(rhs.lowerPoint.y - lowerPoint.y) * (higherPoint.x - lowerPoint.x)<<" "<<(higherPoint.y - lowerPoint.y) * (rhs.lowerPoint.x - lowerPoint.x)<<endl;
-        if (segmentOnSameLine(rhs, *this)) // check if 4 points same line
-        {
-            assert(rhs.lowerPoint.y <= rhs.higherPoint.y && lowerPoint.y <= higherPoint.y);
-            Point_2D upper, lower;
-            if (rhs.higherPoint.y < higherPoint.y)
-            {
-                upper = rhs.higherPoint;
-            }
-            else
-            {
-                upper = higherPoint;
-            }
-            if (rhs.lowerPoint.y > lowerPoint.y)
-            {
-                lower = rhs.lowerPoint;
-            }
-            else
-            {
-                lower = lowerPoint;
-            }
-            if (upper.y < lower.y)
-            {
-                Segment ret;
-                ret.id = -1;
-                return ret;
-                // cout << "No overlap between two segs on the line" << endl;
-                // exit(1);
-            }
-            // cout<<"LOWER: "<<lower<<" UPPER: "<<upper<<endl;
-            Segment ret(lower, upper);
-            if (lower == upper)
-            {
+//     if (rhs.isPoint() || this->isPoint()) //! if current segment is intersecting a single grid point, or current segment is a point!(happend in top down phase)
+//     {
+//         // cout<<"point\n";
+//         if (this->isPoint())
+//         {
+//             //! set rhs as the point
+//             Segment swap;
+//             swap = *this;
+//             *this = rhs;
+//             rhs = swap; //! potential bug if overwrite *this??
+//         }
+//         Segment ret = rhs;
+//         if (segmentOnSameLine(rhs, *this)) // check if 4 points same line
+//         {
+//             if (double_lessorequal(lowerPoint.y, rhs.lowerPoint.y) && double_lessorequal(rhs.lowerPoint.y, higherPoint.y)) //! check if rhs.lowerPoint is on the segment
+//             {
+//                 Segment ret = rhs;
+//                 ret.id = 1; // return single point intersection
+//                 return ret;
+//             }
+//         }
+//         ret.id = -1;
+//         return ret;
+//     }
+//     if (double_equal(cur_slope, rhs_slope))
+//     { // equal slope
+//         // cout<<" "<<(rhs.lowerPoint.y - lowerPoint.y) * (higherPoint.x - lowerPoint.x)<<" "<<(higherPoint.y - lowerPoint.y) * (rhs.lowerPoint.x - lowerPoint.x)<<endl;
+//         if (segmentOnSameLine(rhs, *this)) // check if 4 points same line
+//         {
+//             assert(rhs.lowerPoint.y <= rhs.higherPoint.y && lowerPoint.y <= higherPoint.y);
+//             Point_2D upper, lower;
+//             if (rhs.higherPoint.y < higherPoint.y)
+//             {
+//                 upper = rhs.higherPoint;
+//             }
+//             else
+//             {
+//                 upper = higherPoint;
+//             }
+//             if (rhs.lowerPoint.y > lowerPoint.y)
+//             {
+//                 lower = rhs.lowerPoint;
+//             }
+//             else
+//             {
+//                 lower = lowerPoint;
+//             }
+//             if (upper.y < lower.y)
+//             {
+//                 Segment ret;
+//                 ret.id = -1;
+//                 return ret;
+//                 // cout << "No overlap between two segs on the line" << endl;
+//                 // exit(1);
+//             }
+//             // cout<<"LOWER: "<<lower<<" UPPER: "<<upper<<endl;
+//             Segment ret(lower, upper);
+//             if (lower == upper)
+//             {
 
-                ret.id = 1; // could be a single point intersection, which is an extreme case
-            }
-            else
-            {
-                ret.id = 0;
-            }
-            return ret;
-        }
-        else
-        {
-            Segment ret;
-            ret.id = -1;
-            return ret;
-        }
-    }
-    else
-    {
-        // cout<<"slope1: "<<cur_slope<<" slope2: "<<rhs_slope<<endl;
-        // cout<<"SEG1: "<<*this<<"SEG2: "<<rhs<<endl;
-        // different slope for two segments, might be 1 ;point or 0
-        //cout<<"check if two lines cross each other\n";
-        double A1 = higherPoint.y - lowerPoint.y;
-        // double B1 = higherPoint.x - lowerPoint.x;
-        double B1 = lowerPoint.x - higherPoint.x;
-        double C1 = A1 * lowerPoint.x + B1 * lowerPoint.y;
-        double A2 = rhs.higherPoint.y - rhs.lowerPoint.y;
-        // double B2 = rhs.higherPoint.x - rhs.lowerPoint.x;
-        double B2 = rhs.lowerPoint.x - rhs.higherPoint.x;
-        double C2 = A2 * rhs.lowerPoint.x + B2 * rhs.lowerPoint.y;
-        double det = A1 * B2 - A2 * B1;
-        double x = (B2 * C1 - B1 * C2) / det;
-        double y = (A1 * C2 - A2 * C1) / det;
+//                 ret.id = 1; // could be a single point intersection, which is an extreme case
+//             }
+//             else
+//             {
+//                 ret.id = 0;
+//             }
+//             return ret;
+//         }
+//         else
+//         {
+//             Segment ret;
+//             ret.id = -1;
+//             return ret;
+//         }
+//     }
+//     else
+//     {
+//         // cout<<"slope1: "<<cur_slope<<" slope2: "<<rhs_slope<<endl;
+//         // cout<<"SEG1: "<<*this<<"SEG2: "<<rhs<<endl;
+//         // different slope for two segments, might be 1 ;point or 0
+//         // cout<<"check if two lines cross each other\n";
+//         double A1 = higherPoint.y - lowerPoint.y;
+//         // double B1 = higherPoint.x - lowerPoint.x;
+//         double B1 = lowerPoint.x - higherPoint.x;
+//         double C1 = A1 * lowerPoint.x + B1 * lowerPoint.y;
+//         double A2 = rhs.higherPoint.y - rhs.lowerPoint.y;
+//         // double B2 = rhs.higherPoint.x - rhs.lowerPoint.x;
+//         double B2 = rhs.lowerPoint.x - rhs.higherPoint.x;
+//         double C2 = A2 * rhs.lowerPoint.x + B2 * rhs.lowerPoint.y;
+//         double det = A1 * B2 - A2 * B1;
+//         double x = (B2 * C1 - B1 * C2) / det;
+//         double y = (A1 * C2 - A2 * C1) / det;
 
-        Segment ret;
-        if (double_lessorequal(lowerPoint.y, y) && double_lessorequal(y, higherPoint.y) && double_lessorequal(rhs.lowerPoint.y, y) && double_lessorequal(y, rhs.higherPoint.y))
-        {
-            ret.lowerPoint = Point_2D(x, y);
-            ret.higherPoint = Point_2D(x, y);
-            //  cout<<"LOW: "<<ret.lowerPoint<<" UPP: "<<ret.higherPoint<<endl;
-            ret.id = 1; // return single point intersection
-        }
-        else
-        {
-            //cout<<"intersection point: "<<Point_2D(x, y)<<endl;
-            ret.id = -1;
-        }
-        return ret;
-    }
-    //! if return with id=-1, no intersection
-}
+//         Segment ret;
+//         if (double_lessorequal(lowerPoint.y, y) && double_lessorequal(y, higherPoint.y) && double_lessorequal(rhs.lowerPoint.y, y) && double_lessorequal(y, rhs.higherPoint.y))
+//         {
+//             ret.lowerPoint = Point_2D(x, y);
+//             ret.higherPoint = Point_2D(x, y);
+//             //  cout<<"LOW: "<<ret.lowerPoint<<" UPP: "<<ret.higherPoint<<endl;
+//             ret.id = 1; // return single point intersection
+//         }
+//         else
+//         {
+//             // cout<<"intersection point: "<<Point_2D(x, y)<<endl;
+//             ret.id = -1;
+//         }
+//         return ret;
+//     }
+//     //! if return with id=-1, no intersection
+// }
 
 void TRR::drawTRR(ofstream &stream)
 {
@@ -188,42 +188,13 @@ void TRR::drawCore(ofstream &stream)
 
 bool TRR::insideTRR(Point_2D point)
 {
-    vector<Point_2D> trr1_boundary_grid;
-    vector<Segment> trr1_Sides;
     if (double_equal(radius, 0.0)) // when radius of TRR==0
     {
         Segment pointSeg = Segment(point, point);
-        Segment seg = core.intersect(pointSeg);
+        Segment seg = intersect(core, pointSeg);
         return seg.id == 1; // point intersection
     }
-
-    if (core.slope() > 0)
-    {
-        trr1_boundary_grid.emplace_back(core.lowerPoint.x, core.lowerPoint.y - radius);
-        trr1_boundary_grid.emplace_back(core.higherPoint.x + radius, core.higherPoint.y);
-        trr1_boundary_grid.emplace_back(core.higherPoint.x, core.higherPoint.y + radius);
-        trr1_boundary_grid.emplace_back(core.lowerPoint.x - radius, core.lowerPoint.y); // clock-wise
-    }
-    else if (core.slope() < 0)
-    {
-        trr1_boundary_grid.emplace_back(core.lowerPoint.x + radius, core.lowerPoint.y);
-        trr1_boundary_grid.emplace_back(core.higherPoint.x, core.higherPoint.y + radius);
-        trr1_boundary_grid.emplace_back(core.higherPoint.x - radius, core.higherPoint.y);
-        trr1_boundary_grid.emplace_back(core.lowerPoint.x, core.lowerPoint.y - radius); // clock-wise
-    }
-    else
-    { // core is leaf node
-        trr1_boundary_grid.emplace_back(core.lowerPoint.x, core.lowerPoint.y - radius);
-        trr1_boundary_grid.emplace_back(core.lowerPoint.x + radius, core.lowerPoint.y);
-        trr1_boundary_grid.emplace_back(core.lowerPoint.x, core.lowerPoint.y + radius);
-        trr1_boundary_grid.emplace_back(core.lowerPoint.x - radius, core.lowerPoint.y); // clock-wise
-    }
-
-    for (int i = 0; i < 3; i++)
-    {
-        trr1_Sides.emplace_back(trr1_boundary_grid[i], trr1_boundary_grid[i + 1]);
-    }
-    trr1_Sides.emplace_back(trr1_boundary_grid[3], trr1_boundary_grid[0]);
+    vector<Segment> trr1_Sides = getBoundarys();
 
     vector<double> negtive_slope_interceps; // use interceps to determine if a point is in a TRR, just like linear programming, but here all slopes of constraints are 1 or -1
     vector<double> positive_slope_interceps;
@@ -251,44 +222,40 @@ Point_2D TRR::getMiddlePoint()
     return Point_2D(x, y);
 }
 
-Segment TRR::TRRintersectSeg(Segment seg)
+vector<Segment> TRR::getBoundarys()
 {
-    //! -1 for no intersection!
+    // get 4 boundaries of a TRR
     vector<Point_2D> trr_boundary_grid;
     vector<Segment> trr_Sides;
     // cout<<"seg slope: "<<seg.slope()<<" lowerPoint: "<<seg.lowerPoint<<" higherPoint: "<<seg.higherPoint<<endl;
-    trr_boundary_grid.emplace_back(core.lowerPoint.x, core.lowerPoint.y - radius);
-    trr_boundary_grid.emplace_back(core.lowerPoint.x + radius, core.lowerPoint.y);
-    trr_boundary_grid.emplace_back(core.lowerPoint.x, core.lowerPoint.y + radius);
-    trr_boundary_grid.emplace_back(core.lowerPoint.x - radius, core.lowerPoint.y); // counter clock-wise
+    if (double_greater(core.slope(), 0.0))
+    {
+        trr_boundary_grid.emplace_back(core.lowerPoint.x, core.lowerPoint.y - radius);
+        trr_boundary_grid.emplace_back(core.higherPoint.x + radius, core.higherPoint.y);
+        trr_boundary_grid.emplace_back(core.higherPoint.x, core.higherPoint.y + radius);
+        trr_boundary_grid.emplace_back(core.lowerPoint.x - radius, core.lowerPoint.y); // counter clock-wise
+    }
+    else if (double_less(core.slope(), 0.0))
+    {
+        trr_boundary_grid.emplace_back(core.lowerPoint.x + radius, core.lowerPoint.y);
+        trr_boundary_grid.emplace_back(core.higherPoint.x, core.higherPoint.y + radius);
+        trr_boundary_grid.emplace_back(core.higherPoint.x - radius, core.higherPoint.y);
+        trr_boundary_grid.emplace_back(core.lowerPoint.x, core.lowerPoint.y - radius); // counter clock-wise
+    }
+    else
+    { // core is leaf node
+        trr_boundary_grid.emplace_back(core.lowerPoint.x, core.lowerPoint.y - radius);
+        trr_boundary_grid.emplace_back(core.lowerPoint.x + radius, core.lowerPoint.y);
+        trr_boundary_grid.emplace_back(core.lowerPoint.x, core.lowerPoint.y + radius);
+        trr_boundary_grid.emplace_back(core.lowerPoint.x - radius, core.lowerPoint.y); // counter clock-wise
+    }
+
     for (int i = 0; i < 3; i++)
     {
         trr_Sides.emplace_back(trr_boundary_grid[i], trr_boundary_grid[i + 1]);
     }
     trr_Sides.emplace_back(trr_boundary_grid[3], trr_boundary_grid[0]);
-    // for (auto& seg1 : trr_Sides) {
-    //     cout << seg1 << endl;
-    // }
-    // cout<<"\ntop-dwon\n";
-    for (Segment side : trr_Sides)
-    {
-        Segment intersection = side.intersect(seg);
-        // cout<<"side: "<<side<<" "<<seg<<endl;
-        if (intersection.id != -1)
-        {
-            return intersection;
-        }
-    }
-    if (insideTRR(seg.lowerPoint) && insideTRR(seg.higherPoint)) // ! entire segment is inside TRR, need snaking!
-    {
-        Segment ret = seg;
-        ret.id = 0;
-        return ret;
-    }
-
-    Segment ret;
-    ret.id = -1;
-    return ret;
+    return trr_Sides;
 }
 
 vector<Segment> segmentCutByBlockage(Segment seg, Blockage block) // 4 lines(2 vertical and 2 horizontal) -> 9 regions
@@ -868,141 +835,37 @@ void drawTRRPair(string name, TRR trr1, TRR trr2)
     cout << BLUE << "[Router]" << RESET << " - Visualize the TRR pair in \'" << outFilePath << "\'.\n";
 }
 
-Segment TRRintersectTRR(TRR &trr1, TRR &trr2)
+Segment TRRintersectTRR(TRR trr1, TRR trr2)
 {
     // get four edges
     // cout << "Merging: " << trr1 << " and " << trr2 << endl;
-    vector<Point_2D> trr1_boundary_grid;
-    vector<Point_2D> trr2_boundary_grid;
-    vector<Segment> trr1_Sides;
-    vector<Segment> trr2_Sides;
-    assert(trr1.radius != 0 || trr2.radius != 0);
+    vector<Segment> trr1_Sides = trr1.getBoundarys();
+    vector<Segment> trr2_Sides = trr2.getBoundarys();
+    assert(!(double_equal(trr1.radius, 0.0) && double_equal(trr2.radius, 0.0)));
 
     //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // todo: what if a core is a leaf and its radius is 0? judge if its in a trr, but we didn't run into this case?
     //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     //! if there is one trr's radius = 0
-    if (trr1.radius == 0 || trr2.radius == 0)
+    if (double_equal(trr1.radius, 0.0) || double_equal(trr2.radius, 0.0))
     {
-        if (trr1.radius == 0)
+        if (double_equal(trr1.radius, 0.0))
         {
-
-            if (double_greater(trr2.core.slope(), 0.0))
+            Segment ret = TRRintersectSeg(trr2, trr1.core);
+            if (ret.id != -1)
             {
-                trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y - trr2.radius);
-                trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x + trr2.radius, trr2.core.higherPoint.y);
-                trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x, trr2.core.higherPoint.y + trr2.radius);
-                trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x - trr2.radius, trr2.core.lowerPoint.y); // clock-wise
-            }
-            else if (double_less(trr2.core.slope(), 0.0))
-            {
-                trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x + trr2.radius, trr2.core.lowerPoint.y);
-                trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x, trr2.core.higherPoint.y + trr2.radius);
-                trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x - trr2.radius, trr2.core.higherPoint.y);
-                trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y - trr2.radius); // clock-wise
-            }
-            else
-            { // leaf node
-                trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y - trr2.radius);
-                trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x + trr2.radius, trr2.core.lowerPoint.y);
-                trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y + trr2.radius);
-                trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x - trr2.radius, trr2.core.lowerPoint.y); // clock-wise
-            }
-
-            for (int i = 0; i < 3; i++)
-            {
-                trr2_Sides.emplace_back(trr2_boundary_grid[i], trr2_boundary_grid[i + 1]);
-            }
-            trr2_Sides.emplace_back(trr2_boundary_grid[3], trr2_boundary_grid[0]);
-
-            for (auto &seg2 : trr2_Sides)
-            {
-                // cout<<"seg1: "<<seg1<<"seg2: "<<seg2<<endl;
-                Segment seg = trr1.core.intersect(seg2); //! seg should be a single point in most cases
-                // ? could there be 2 intersection points for core and trr sides?
-                if (seg.id == 0)
-                {
-                    return seg;
-                }
-                else if (seg.id == 1) // single point intersection
-                {
-                    if (trr2.insideTRR(trr1.core.lowerPoint))
-                    {
-                        return Segment(seg.lowerPoint, trr1.core.lowerPoint);
-                    }
-                    else if (trr2.insideTRR(trr1.core.higherPoint))
-                    {
-                        return Segment(seg.lowerPoint, trr1.core.higherPoint);
-                    }
-                }
-            }
-            //! if trr1.core is completely inside trr2
-            if (trr2.insideTRR(trr1.core.lowerPoint) && trr2.insideTRR(trr1.core.higherPoint))
-            {
-                Segment trr1core(trr1.core);
-                trr1core.id = 0;
-                return trr1core;
+                return ret;
             }
             cout << endl
                  << trr2.insideTRR(trr1.core.lowerPoint) << " ff " << trr2.insideTRR(trr1.core.higherPoint) << endl;
         }
         else
         {
-            if (double_greater(trr1.core.slope(), 0.0))
+            Segment ret = TRRintersectSeg(trr1, trr2.core);
+            if (ret.id != -1)
             {
-                trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y - trr1.radius);
-                trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x + trr1.radius, trr1.core.higherPoint.y);
-                trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x, trr1.core.higherPoint.y + trr1.radius);
-                trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x - trr1.radius, trr1.core.lowerPoint.y); // clock-wise
-            }
-            else if (double_less(trr1.core.slope(), 0.0))
-            {
-                trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x + trr1.radius, trr1.core.lowerPoint.y);
-                trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x, trr1.core.higherPoint.y + trr1.radius);
-                trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x - trr1.radius, trr1.core.higherPoint.y);
-                trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y - trr1.radius); // clock-wise
-            }
-            else
-            { // leaf node
-                trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y - trr1.radius);
-                trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x + trr1.radius, trr1.core.lowerPoint.y);
-                trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y + trr1.radius);
-                trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x - trr1.radius, trr1.core.lowerPoint.y); // clock-wise
-            }
-
-            for (int i = 0; i < 3; i++)
-            {
-                trr1_Sides.emplace_back(trr1_boundary_grid[i], trr1_boundary_grid[i + 1]);
-            }
-            trr1_Sides.emplace_back(trr1_boundary_grid[3], trr1_boundary_grid[0]);
-
-            for (auto &seg1 : trr1_Sides)
-            {
-                // cout<<"seg1: "<<seg1<<"seg2: "<<seg2<<endl;
-                Segment seg = trr2.core.intersect(seg1); //! seg should be a single point in most cases
-                // ? could there be 2 intersection points for core and trr sides?
-                if (seg.id == 0)
-                {
-                    return seg;
-                }
-                else if (seg.id == 1) // return single point
-                {
-                    if (trr1.insideTRR(trr2.core.lowerPoint))
-                    {
-                        return Segment(seg.lowerPoint, trr2.core.lowerPoint);
-                    }
-                    else if (trr1.insideTRR(trr2.core.higherPoint))
-                    {
-                        return Segment(seg.lowerPoint, trr2.core.higherPoint);
-                    }
-                }
-            }
-            if (trr1.insideTRR(trr2.core.lowerPoint) && trr1.insideTRR(trr2.core.higherPoint))
-            {
-                Segment trr2core(trr2.core);
-                trr2core.id = 0;
-                return trr2core;
+                return ret;
             }
             cout << endl
                  << trr1.insideTRR(trr2.core.lowerPoint) << " gg " << trr1.insideTRR(trr2.core.higherPoint) << endl;
@@ -1026,60 +889,7 @@ Segment TRRintersectTRR(TRR &trr1, TRR &trr2)
         ret.id = -1;
         return ret;
     }
-    // cout<<"radius check*******888\n";
-    //  if both trr's radius > 0
-    if (double_greater(trr1.core.slope(), 0.0))
-    {
-        trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y - trr1.radius);
-        trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x + trr1.radius, trr1.core.higherPoint.y);
-        trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x, trr1.core.higherPoint.y + trr1.radius);
-        trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x - trr1.radius, trr1.core.lowerPoint.y); // clock-wise
-    }
-    else if (double_less(trr1.core.slope(), 0.0))
-    {
-        trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x + trr1.radius, trr1.core.lowerPoint.y);
-        trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x, trr1.core.higherPoint.y + trr1.radius);
-        trr1_boundary_grid.emplace_back(trr1.core.higherPoint.x - trr1.radius, trr1.core.higherPoint.y);
-        trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y - trr1.radius); // clock-wise
-    }
-    else
-    { // leaf node
-        trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y - trr1.radius);
-        trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x + trr1.radius, trr1.core.lowerPoint.y);
-        trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x, trr1.core.lowerPoint.y + trr1.radius);
-        trr1_boundary_grid.emplace_back(trr1.core.lowerPoint.x - trr1.radius, trr1.core.lowerPoint.y); // clock-wise
-    }
-
-    if (trr2.core.slope() > 0)
-    {
-        trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y - trr2.radius);
-        trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x + trr2.radius, trr2.core.higherPoint.y);
-        trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x, trr2.core.higherPoint.y + trr2.radius);
-        trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x - trr2.radius, trr2.core.lowerPoint.y); // clock-wise
-    }
-    else if (trr2.core.slope() < 0)
-    {
-        trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x + trr2.radius, trr2.core.lowerPoint.y);
-        trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x, trr2.core.higherPoint.y + trr2.radius);
-        trr2_boundary_grid.emplace_back(trr2.core.higherPoint.x - trr2.radius, trr2.core.higherPoint.y);
-        trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y - trr2.radius); // clock-wise
-    }
-    else
-    { // leaf node
-        trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y - trr2.radius);
-        trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x + trr2.radius, trr2.core.lowerPoint.y);
-        trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x, trr2.core.lowerPoint.y + trr2.radius);
-        trr2_boundary_grid.emplace_back(trr2.core.lowerPoint.x - trr2.radius, trr2.core.lowerPoint.y); // clock-wise
-    }
-
-    for (int i = 0; i < 3; i++)
-    {
-        trr1_Sides.emplace_back(trr1_boundary_grid[i], trr1_boundary_grid[i + 1]);
-        trr2_Sides.emplace_back(trr2_boundary_grid[i], trr2_boundary_grid[i + 1]);
-    }
-    trr1_Sides.emplace_back(trr1_boundary_grid[3], trr1_boundary_grid[0]);
-    trr2_Sides.emplace_back(trr2_boundary_grid[3], trr2_boundary_grid[0]);
-
+    //!  if both trr's radius > 0
     // cout << "Print trr1's sides" << endl;
     // for (auto& seg1 : trr1_Sides) {
     //     cout << seg1 << endl;
@@ -1101,7 +911,7 @@ Segment TRRintersectTRR(TRR &trr1, TRR &trr2)
     {
         for (auto &seg2 : trr2_Sides)
         {
-            Segment seg = seg1.intersect(seg2);
+            Segment seg = intersect(seg1, seg2);
             if (seg.id == 0)
             {
                 return seg;
@@ -1195,15 +1005,193 @@ bool segmentOnSameLine(Segment seg1, Segment seg2) //
         return true;
     }
     double slope = (seg1.lowerPoint.y - seg2.lowerPoint.y) / (seg1.lowerPoint.x - seg2.lowerPoint.x);
-    //cout<<"delta slope: "<<slope<<endl;
+    // cout<<"delta slope: "<<slope<<endl;
     if (double_equal(seg1.slope(), 0.0))
     {
         return double_equal(slope, seg2.slope());
     }
     else
     {
-        //cout<<setprecision(9)<<"1: "<<slope<<" 2: "<<seg1.slope()<<" equal: "<<double_equal(slope, seg1.slope())<<endl;
+        // cout<<setprecision(9)<<"1: "<<slope<<" 2: "<<seg1.slope()<<" equal: "<<double_equal(slope, seg1.slope())<<endl;
         return double_equal(slope, seg1.slope());
     }
     return false;
+}
+
+Segment TRRintersectSeg(TRR trr, Segment seg)
+{
+    //! -1 for no intersection!
+    vector<Segment> trr_Sides = trr.getBoundarys();
+    for (Segment side : trr_Sides)
+    {
+        Segment intersection = intersect(seg, side);
+        if (intersection.id == 0)
+        {
+            return intersection;
+        }
+        else if (intersection.id == 1) // single point intersection
+        {
+            // cout << "debughere7.5\n";
+            if (trr.insideTRR(seg.lowerPoint))
+            {
+                // cout << "debughere8\n";
+                Segment ret(intersection.lowerPoint, seg.lowerPoint);
+                ret.id = 0;
+                return ret;
+            }
+            else if (trr.insideTRR(seg.higherPoint))
+            {
+                // cout << "debughere9\n";
+                Segment ret(intersection.lowerPoint, seg.higherPoint);
+                ret.id = 0;
+                return ret;
+            }
+            else
+            {
+                Segment ret(intersection);
+                ret.id = 1;
+                return ret;
+            }
+        }
+    }
+    if (trr.insideTRR(seg.lowerPoint) && trr.insideTRR(seg.higherPoint)) // ! entire segment is inside TRR, need snaking!
+    {
+        Segment ret = seg;
+        ret.id = 0;
+        return ret;
+    }
+
+    Segment ret;
+    ret.id = -1;
+    return ret;
+}
+
+Segment intersect(Segment lhs, Segment rhs)
+{
+    //! -1 for no intersection, 0 for segment intersection, 1 for point intersection
+    double lhs_slope = lhs.slope();
+    double rhs_slope = rhs.slope();
+    if (rhs.isPoint() && lhs.isPoint())
+    {
+        // cout << "points intersect: " << rhs << " " << lhs << endl;
+        Segment ret = rhs;
+        if (lhs == rhs)
+        {
+            ret = lhs;
+            ret.id = 1;
+            return ret;
+        }
+
+        ret.id = -1;
+        return ret;
+    }
+    assert(!(rhs.isPoint() && lhs.isPoint()));
+
+    if (rhs.isPoint() || lhs.isPoint()) //! if current segment is intersecting a single grid point, or current segment is a point!(happend in top down phase)
+    {
+        if (lhs.isPoint())
+        {
+            //! set rhs as the point
+            Segment swap;
+            swap = lhs;
+            lhs = rhs;
+            rhs = swap;
+        }
+        Segment ret = rhs;
+        if (segmentOnSameLine(rhs, lhs)) // check if 4 points same line
+        {
+            if (double_lessorequal(lhs.lowerPoint.y, rhs.lowerPoint.y) && double_lessorequal(rhs.lowerPoint.y, lhs.higherPoint.y)) //! check if rhs.lowerPoint is on the segment
+            {
+                Segment ret = rhs;
+                ret.id = 1; // return single point intersection
+                return ret;
+            }
+        }
+        ret.id = -1;
+        return ret;
+    }
+    if (double_equal(lhs_slope, rhs_slope))
+    { // equal slope
+        // cout<<" "<<(rhs.lowerPoint.y - lowerPoint.y) * (higherPoint.x - lowerPoint.x)<<" "<<(higherPoint.y - lowerPoint.y) * (rhs.lowerPoint.x - lowerPoint.x)<<endl;
+        if (segmentOnSameLine(rhs, lhs)) // check if 4 points same line
+        {
+            assert(rhs.lowerPoint.y <= rhs.higherPoint.y && lhs.lowerPoint.y <= lhs.higherPoint.y);
+            Point_2D upper, lower;
+            if (rhs.higherPoint.y < lhs.higherPoint.y)
+            {
+                upper = rhs.higherPoint;
+            }
+            else
+            {
+                upper = lhs.higherPoint;
+            }
+            if (rhs.lowerPoint.y > lhs.lowerPoint.y)
+            {
+                lower = rhs.lowerPoint;
+            }
+            else
+            {
+                lower = lhs.lowerPoint;
+            }
+            if (upper.y < lower.y)
+            {
+                Segment ret;
+                ret.id = -1;
+                return ret;
+                // cout << "No overlap between two segs on the line" << endl;
+                // exit(1);
+            }
+            // cout<<"LOWER: "<<lower<<" UPPER: "<<upper<<endl;
+            Segment ret(lower, upper);
+            if (lower == upper)
+            {
+
+                ret.id = 1; // could be a single point intersection, which is an extreme case
+            }
+            else
+            {
+                ret.id = 0;
+            }
+            return ret;
+        }
+        else
+        {
+            Segment ret;
+            ret.id = -1;
+            return ret;
+        }
+    }
+    else
+    {
+        // cout<<"slope1: "<<cur_slope<<" slope2: "<<rhs_slope<<endl;
+        // cout<<"SEG1: "<<*this<<"SEG2: "<<rhs<<endl;
+        // different slope for two segments, might be 1 point or 0
+        //! check if two lines cross each other
+        double A1 = lhs.higherPoint.y - lhs.lowerPoint.y;
+        // double B1 = higherPoint.x - lowerPoint.x;
+        double B1 = lhs.lowerPoint.x - lhs.higherPoint.x;
+        double C1 = A1 * lhs.lowerPoint.x + B1 * lhs.lowerPoint.y;
+        double A2 = rhs.higherPoint.y - rhs.lowerPoint.y;
+        // double B2 = rhs.higherPoint.x - rhs.lowerPoint.x;
+        double B2 = rhs.lowerPoint.x - rhs.higherPoint.x;
+        double C2 = A2 * rhs.lowerPoint.x + B2 * rhs.lowerPoint.y;
+        double det = A1 * B2 - A2 * B1;
+        double x = (B2 * C1 - B1 * C2) / det;
+        double y = (A1 * C2 - A2 * C1) / det;
+
+        Segment ret;
+        if (double_lessorequal(lhs.lowerPoint.y, y) && double_lessorequal(y, lhs.higherPoint.y) && double_lessorequal(rhs.lowerPoint.y, y) && double_lessorequal(y, rhs.higherPoint.y))
+        {
+            ret.lowerPoint = Point_2D(x, y);
+            ret.higherPoint = Point_2D(x, y);
+            //  cout<<"LOW: "<<ret.lowerPoint<<" UPP: "<<ret.higherPoint<<endl;
+            ret.id = 1; // return single point intersection
+        }
+        else
+        {
+            ret.id = -1;
+        }
+        return ret;
+    }
+    //! if return with id=-1, no intersection
 }

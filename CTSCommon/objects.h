@@ -105,8 +105,6 @@ public:
         return os;
     }
     double slope();                 // get slope of segment
-    Segment intersect(Segment rhs); // rhs: right hand side
-    // todo: segment merge and segment split????
 };
 
 class TRR
@@ -135,11 +133,7 @@ public:
 
     bool insideTRR(Point_2D point);
     Point_2D getMiddlePoint();
-
-    Segment TRRintersectSeg(Segment seg); //! this function is used for TRRs in top-down phase,
-                                           //! in which all cores of TRRs are points.
-                                           //! And the intersection point is used as solution,
-                                           //! which means ignore the other points on ms(v)
+    vector<Segment> getBoundarys();
 };
 
 class TreeNode
@@ -220,8 +214,10 @@ void updateMergeCapacitance(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *n
 void updateMergeDelay(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb);
 double solveForX(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, double L);
 double solveForLPrime(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, int tag); // see κ prime in the abk paper
-Segment TRRintersectTRR(TRR &trr1, TRR &trr2);
+Segment TRRintersectTRR(TRR trr1, TRR trr2);
 void drawTRRPair(string name, TRR trr1, TRR trr2);
 void TRRBasedMerge(TreeNode *, TreeNode *, TreeNode *);
 bool segmentOnSameLine(Segment, Segment);
+Segment TRRintersectSeg(TRR trr, Segment seg);
+Segment intersect(Segment lhs, Segment rhs); // lhs: left hand side, rhs: right hand side
 #endif
