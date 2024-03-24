@@ -283,7 +283,7 @@ void ZSTDMERouter::drawBottomUp()
     // outfile << "set yrange [0:" << _pChip->get_height() << "]" << endl;
     // outfile << "plot[:][:] '-' w l lt 3 lw 2, '-' with filledcurves closed fc \"grey90\" fs border leftChild \"red\", '-' with filledcurves closed fc \"yellow\" fs border leftChild \"black\", '-' w l lt 1" << endl << endl;
 
-    outfile << "plot[:][:]  '-' w l lt 3 lw 2, '-'  w l lt 7 lw 16, '-' w p pt 7 ps 6 " << endl
+    outfile << "plot[:][:]  '-' w l lt 3 lw 2, '-'  w l lt 7 lw 10, '-' w p pt 7 ps 2" << endl
             << endl;
 
     outfile << "# TRR" << endl;

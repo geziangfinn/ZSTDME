@@ -42,6 +42,7 @@
 using namespace std;
 
 #define EPS 1e-5 // 1e-2, for now
+#define DOUBLE_MAX __DBL_MAX__
 const string padding(30, '=');
 
 #define LINEAR_DELAY 0

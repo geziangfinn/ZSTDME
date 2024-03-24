@@ -7,3 +7,5 @@
 ### NNGGRID: see the paper: clock aware low power placement
 ### todo: calculate time of each part of the algorithm
 ### added clock tree repair
+
+example command: ./ZSTDME -input ../../Benchmarks/ISPD2009/ispd09f34 -plotPath ../../Graphs/

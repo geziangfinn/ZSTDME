@@ -53,8 +53,8 @@ int main(int argc, char *argv[])
     }
     ctsdb->showCTSdbInfo();
     TreeTopology *topo = new TreeTopology(ctsdb);
-    //topo->buildTopoUsingNearestNeighborGraph();
-    topo->buildTreeUsingNearestNeighborGraph();
+    // topo->buildTreeUsingNearestNeighborGraph();
+    topo->buildTreeUsingNearestNeighborGraph_BucketDecomposition();
     ZSTDMERouter *router = new ZSTDMERouter(ctsdb);
     int delayModel=ELMORE_DELAY;
     if(gArg.CheckExist("linearDelay"))

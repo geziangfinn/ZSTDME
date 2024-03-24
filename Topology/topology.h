@@ -58,13 +58,18 @@ public:
     unordered_map<int, TreeNode *> idToTreeNodeMap;
     CTSDB *db;
 
-    vector<vector<NNGGrid>> grids;                                                             // for buildTreeUsingNearestNeighborGraph only
+    vector<vector<NNGGrid>> grids;            // for buildTreeUsingNearestNeighborGraph
+    vector<pair<int, int>> treeNodeGridIndex; // store the grid that a treeNode belongs to
+
     vector<TreeNode *> globalTreeNodes;                                                        // for buildTreeUsingNearestNeighborGraph only, make sure that TreeNode->id == the index of the TreeNode in globalTreeNodes!!
     vector<bool> globalMerged;                                                                 // for buildTreeUsingNearestNeighborGraph only
     priority_queue<NngNodePair, vector<NngNodePair>, greater<NngNodePair>> globalMinimumPairs; // for buildTreeUsingNearestNeighborGraph only
-    int gridCountX;                                                                            // how many grids in X direction,  for buildTreeUsingNearestNeighborGraph only
-    int gridCountY;                                                                            // for buildTreeUsingNearestNeighborGraph only
-
+    
+    int gridCountX;                                                                            // how many grids in X direction,  for buildTreeUsingNearestNeighborGraph_BucketDecomposition only
+    int gridCountY;
+    double gridWidth;
+    double gridHeight;                                                                            // for buildTreeUsingNearestNeighborGraph_BucketDecomposition
+    Rect boundingBox;// bounding box of all unmerged tree nodes
     void init()
     {
         root = NULL;
@@ -80,13 +85,18 @@ public:
     double nearestNeighborPairCost(TreeNode *, TreeNode *);
 
     void initTreeNodes(); // for buildTreeUsingNearestNeighborGraph only
+
     void buildTreeUsingNearestNeighborGraph();
     void calculateNearestNeighbor();
 
-    void initGrids();                     // for calculateNearestNeighbor_Grid() only
-    void calculateNearestNeighbor_Grid(); // see the paper: clock aware low power placement algorithm 2, for buildTreeUsingNearestNeighborGraph only
-    void updateVforOneGrid(NNGGrid &, vector<TreeNode *>);
-    void readTopologyFromFile();
+    void initGrids(); // for buildTreeUsingNearestNeighborGraph_BucketDecomposition
+    void updatedGrids(int);
+    void buildTreeUsingNearestNeighborGraph_BucketDecomposition();
+    void calculateNearestNeighbor_BucketDecomposition(int);
+    void calculateNearestNeighborForAll_BucketDecomposition();
+    bool gridExist(pair<int, int>);
+    void addNodeToGrid(int);
+    int mergeNodes_BucketDecomposition(int, int);
 };
 
 class NNGGrid
@@ -96,15 +106,9 @@ public:
     {
         Init();
     }
-    void clearV()
-    {
-        priority_queue<NngNodePair, vector<NngNodePair>, greater<NngNodePair>> empty;
-        swap(empty, V);
-    }
     void Init()
     {
         gridTreeNodes.clear();
-        clearV();
         center.SetZero();
         ll.SetZero();
         ur.SetZero();
@@ -118,8 +122,7 @@ public:
     float width;
     float height;
     float area;
-    vector<TreeNode *> gridTreeNodes;
-    priority_queue<NngNodePair, vector<NngNodePair>, greater<NngNodePair>> V; // follow the denotion in the paper: clock aware low power placement
+    vector<int> gridTreeNodes;// store treenode id here
     double getArea()
     {
         area = width * height;
