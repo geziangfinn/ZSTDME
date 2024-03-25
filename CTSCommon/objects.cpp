@@ -212,7 +212,8 @@ bool TRR::insideTRR(Point_2D point)
     sort(positive_slope_interceps.begin(), positive_slope_interceps.end());
     sort(negtive_slope_interceps.begin(), negtive_slope_interceps.end());
 
-    return (point.x + point.y) >= negtive_slope_interceps[0] && (point.x + point.y) <= negtive_slope_interceps[1] && (point.y - point.x) >= positive_slope_interceps[0] && (point.y - point.x) <= positive_slope_interceps[1];
+    // return (point.x + point.y) >= negtive_slope_interceps[0] && (point.x + point.y) <= negtive_slope_interceps[1] && (point.y - point.x) >= positive_slope_interceps[0] && (point.y - point.x) <= positive_slope_interceps[1];
+    return double_greaterorequal(point.x + point.y, negtive_slope_interceps[0]) && double_lessorequal(point.x + point.y, negtive_slope_interceps[1]) && double_greaterorequal(point.y - point.x, positive_slope_interceps[0]) && double_lessorequal(point.y - point.x, positive_slope_interceps[1]);
 }
 
 Point_2D TRR::getMiddlePoint()
@@ -845,6 +846,15 @@ Segment TRRintersectTRR(TRR trr1, TRR trr2)
     // cout << "Merging: " << trr1 << " and " << trr2 << endl;
     vector<Segment> trr1_Sides = trr1.getBoundarys();
     vector<Segment> trr2_Sides = trr2.getBoundarys();
+    if (double_equal(trr1.radius, 0.0) && double_equal(trr2.radius, 0.0))
+    {
+        if (trr1.core == trr2.core)
+        {
+            Segment ret = trr1.core;
+            ret.id = 0;
+            return ret;
+        }
+    }
     assert(!(double_equal(trr1.radius, 0.0) && double_equal(trr2.radius, 0.0)));
 
     //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
