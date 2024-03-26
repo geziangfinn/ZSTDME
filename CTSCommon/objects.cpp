@@ -1131,7 +1131,7 @@ Segment intersect(Segment lhs, Segment rhs)
         {
             assert(rhs.lowerPoint.y <= rhs.higherPoint.y && lhs.lowerPoint.y <= lhs.higherPoint.y);
             Point_2D upper, lower;
-            if (rhs.higherPoint.y < lhs.higherPoint.y)
+            if (double_less(rhs.higherPoint.y, lhs.higherPoint.y))
             {
                 upper = rhs.higherPoint;
             }
@@ -1139,7 +1139,7 @@ Segment intersect(Segment lhs, Segment rhs)
             {
                 upper = lhs.higherPoint;
             }
-            if (rhs.lowerPoint.y > lhs.lowerPoint.y)
+            if (double_greater(rhs.lowerPoint.y, lhs.lowerPoint.y))
             {
                 lower = rhs.lowerPoint;
             }
@@ -1147,7 +1147,7 @@ Segment intersect(Segment lhs, Segment rhs)
             {
                 lower = lhs.lowerPoint;
             }
-            if (upper.y < lower.y)
+            if (double_less(upper.y, lower.y))
             {
                 Segment ret;
                 ret.id = -1;
