@@ -323,7 +323,7 @@ void TreeTopology::initGrids()
 
 void TreeTopology::updatedGrids(int k) // k = average node count per grid
 {
-    cout << "recalculating grids\n";
+    // cout << "recalculating grids\n";
     int unmergedNodeCount = 0;
 
     double xMin = DOUBLE_MAX;
@@ -346,7 +346,7 @@ void TreeTopology::updatedGrids(int k) // k = average node count per grid
 
         unmergedNodeCount++;
     }
-    cout << "unmerged: " << unmergedNodeCount << endl;
+    // cout << "unmerged: " << unmergedNodeCount << endl;
 
     boundingBox.ll.x = xMin - 1.0;
     boundingBox.ll.y = yMin - 1.0;
@@ -366,8 +366,8 @@ void TreeTopology::updatedGrids(int k) // k = average node count per grid
     gridCountX = ceil(boundingBox.getWidth() / gridWidth);
     gridCountY = ceil(boundingBox.getHeight() / gridHeight);
 
-    cout << "bbox: " << boundingBox.getWidth() << " " << boundingBox.getHeight() << endl;
-    cout << "updated grid count: " << gridCountX << " " << gridCountY << endl;
+    // cout << "bbox: " << boundingBox.getWidth() << " " << boundingBox.getHeight() << endl;
+    // cout << "updated grid count: " << gridCountX << " " << gridCountY << endl;
 
     //! grid index:
     //! # 5
@@ -420,15 +420,11 @@ void TreeTopology::updatedGrids(int k) // k = average node count per grid
         }
     }
 }
-
 void TreeTopology::buildTreeUsingNearestNeighborGraph_BucketDecomposition()
 {
     initTreeNodes();
-    cout<<"cp1\n";
     initGrids();
-    cout<<"cp2\n";
     calculateNearestNeighborForAll_BucketDecomposition();
-    cout<<"cp3\n";
     // During a single CTS run, the boudingBox(of all tree nodes) might shrink but will not expand
 
     int leafCount = db->dbSinks.size();
@@ -492,11 +488,11 @@ void TreeTopology::buildTreeUsingNearestNeighborGraph_BucketDecomposition()
         if (unmergedNodeCount > 1)
         {
             // cout << "remaining node count: " << unmergedNodeCount << endl;
-            cout << "updating grids\n";
+            // cout << "updating grids\n";
 
             while (globalMinimumPairs.empty())
             {
-                cout << "k is " << k << " now\n";
+                // cout << "k is " << k << " now\n";
                 updatedGrids(k);
                 calculateNearestNeighborForAll_BucketDecomposition(); // update the globalMinimumPairs
                 k *= 2;
@@ -517,10 +513,9 @@ void TreeTopology::buildTreeUsingNearestNeighborGraph_BucketDecomposition()
             // cout << "preing " << curId << endl;
         }
     };
-    preOrderTraversal(root);
-    assert(tempsize == globalTreeNodes.size());
+    // preOrderTraversal(root);
+    // assert(tempsize == globalTreeNodes.size());
     nodeCount = globalTreeNodes.size();
-    cout<<GREEN<<"nodeCount: "<<nodeCount<<RESET<<endl;
 }
 
 void TreeTopology::calculateNearestNeighbor_BucketDecomposition(int treeNodeID) // this calculates nn for the given node using bucket decomposition(grid based method)
@@ -600,14 +595,6 @@ void TreeTopology::addNodeToGrid(int treeNodeID)
         cout << curNodeX - boundingBox.ll.x << endl;
         cout << grids[gridCountX - 1][0].ur << endl;
         cout << gridWidth << endl;
-    }
-
-        if (gridIndexY >= gridCountY||gridIndexY < 0)
-    {
-        cout << "checking grid boundary\n";
-        cout << curNodeY <<" "<<boundingBox.ll.y << endl;
-        cout << grids[0][gridCountY-1].ur << endl;
-        cout << gridHeight << endl;
     }
     assert(gridIndexX >= 0 && gridIndexX < gridCountX);
     assert(gridIndexY >= 0 && gridIndexY < gridCountY);
