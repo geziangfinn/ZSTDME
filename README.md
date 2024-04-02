@@ -9,3 +9,5 @@
 ### added clock tree repair
 
 example command: ./ZSTDME -input ../../Benchmarks/ISPD2009/ispd09f34 -plotPath ../../Graphs/
+
+### for DME3D, see the paper: Clock Tree Synthesis for TSV-Based 3D IC

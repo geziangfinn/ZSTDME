@@ -32,6 +32,8 @@ public:
 
     CTSDB *db;
 
+    vector<metal> metals;
+
     void init()
     {
         db = NULL;
@@ -64,6 +66,9 @@ public:
 
     void buildSolution();
     void drawSolution();
+    void buildSolution_ISPD();
+
+    void metalLayerAssignment();
 
     Segment nineRegionBasedFeasibleMergeSegmentCutting(Segment, Segment); // See the paper in README
 };

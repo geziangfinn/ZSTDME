@@ -74,6 +74,8 @@ void ZSTDMERouter::topDown()
                 {
                     double snakingWirelength = curNode->trr.radius - L1Dist(treeNodeLocation[curNode->parent->id], treeNodeLocation[curNode->id]);
                     //? how to do exact snaking espacially when there are blockages?
+                    //? how to add snaking here????
+                    // todo: add snaking
                 }
             }
 
@@ -136,7 +138,7 @@ void ZSTDMERouter::bottomUp()
             }
             else if (delayModel == ELMORE_DELAY) // elmore delay, see the book for clear explanation
             {
-                double x = solveForX(curNode->leftChild, curNode->rightChild, curNode, L);
+                double x = solveForX_multiMetal(curNode->leftChild, curNode->rightChild, curNode, L, metals);
                 if (double_greaterorequal(x, 0.0) && double_lessorequal(x, L))
                 {
                     e_a = x;
@@ -145,13 +147,13 @@ void ZSTDMERouter::bottomUp()
                 else if (double_less(x, 0.0))
                 {
                     e_a = 0.0;
-                    e_b = solveForLPrime(curNode->leftChild, curNode->rightChild, curNode, 0);
+                    e_b = solveForLPrime_multiMetal(curNode->leftChild, curNode->rightChild, curNode, 0, metals);
                     assert(double_greater(e_b, L));
                 }
                 else if (double_less(L, x))
                 {
                     e_b = 0.0;
-                    e_a = solveForLPrime(curNode->leftChild, curNode->rightChild, curNode, 1);
+                    e_a = solveForLPrime_multiMetal(curNode->leftChild, curNode->rightChild, curNode, 1, metals);
                     assert(double_greater(e_a, L));
                 }
             }
@@ -160,6 +162,8 @@ void ZSTDMERouter::bottomUp()
                 cout << RED << "SET DELAY MODEL FIRST!" << RESET << endl;
                 exit(0);
             }
+
+            // todo: add code for RLC calculation
 
             curNode->leftChild->trr.radius = e_a; //! e_a for leftChild and e_b for rightChild
             curNode->rightChild->trr.radius = e_b;
@@ -607,6 +611,49 @@ void ZSTDMERouter::drawSolution()
     system(("gnuplot " + outFilePath).c_str());
 
     cout << BLUE << "[Router]" << RESET << " - Visualize the solution graph in \'" << outFilePath << "\'.\n";
+}
+
+void ZSTDMERouter::buildSolution_ISPD()
+{
+    // todo: implement me
+}
+
+void ZSTDMERouter::metalLayerAssignment()
+{
+    //! assume metal layer index start from 0, no dummy metal now!
+    int treeLevelCount = 0;                                                    // number of tree levels
+    int metalLayerCount = metals.size();                                       //! no dummy metal!!!
+    std::function<void(TreeNode *)> preOrderTraversal = [&](TreeNode *curNode) //!&
+    {
+        if (curNode)
+        {
+            int curId = curNode->id;
+            if (curNode->parent)
+            {
+                curNode->level = curNode->parent->level + 1;
+                if (curNode->level > treeLevelCount)
+                {
+                    treeLevelCount = curNode->level;
+                }
+            }
+            preOrderTraversal(curNode->leftChild);
+            preOrderTraversal(curNode->rightChild);
+        }
+    };
+    topology->root->level = 1; // tree layer start from 1 rather than 0
+    assert(!topology->root->parent);
+    preOrderTraversal(topology->root);
+
+    std::function<void(TreeNode *)> preOrderTraversal_SetMetal = [&](TreeNode *curNode)
+    {
+        if (curNode)
+        {
+            int curId = curNode->id;
+            curNode->metalLayerIndex = ceil((double(curNode->level) / double(treeLevelCount)) * double(metals.size())) - 1; // -1 because index of the vector metals starts from 1
+            preOrderTraversal(curNode->leftChild);
+            preOrderTraversal(curNode->rightChild);
+        }
+    };
 }
 
 // Segment ZSTDMERouter::TRRintersectTRR(TRR &trr1, TRR &trr2)

@@ -64,12 +64,12 @@ public:
     vector<TreeNode *> globalTreeNodes;                                                        // for buildTreeUsingNearestNeighborGraph only, make sure that TreeNode->id == the index of the TreeNode in globalTreeNodes!!
     vector<bool> globalMerged;                                                                 // for buildTreeUsingNearestNeighborGraph only
     priority_queue<NngNodePair, vector<NngNodePair>, greater<NngNodePair>> globalMinimumPairs; // for buildTreeUsingNearestNeighborGraph only
-    
-    int gridCountX;                                                                            // how many grids in X direction,  for buildTreeUsingNearestNeighborGraph_BucketDecomposition only
+
+    int gridCountX; // how many grids in X direction,  for buildTreeUsingNearestNeighborGraph_BucketDecomposition only
     int gridCountY;
     double gridWidth;
-    double gridHeight;                                                                            // for buildTreeUsingNearestNeighborGraph_BucketDecomposition
-    Rect boundingBox;// bounding box of all unmerged tree nodes
+    double gridHeight; // for buildTreeUsingNearestNeighborGraph_BucketDecomposition
+    Rect boundingBox;  // bounding box of all unmerged tree nodes
     void init()
     {
         root = NULL;
@@ -97,6 +97,10 @@ public:
     bool gridExist(pair<int, int>);
     void addNodeToGrid(int);
     int mergeNodes_BucketDecomposition(int, int);
+
+    void DLE_3D();
+    void DLE_loop(TreeNode* node);
+    void NearestAssign(TreeNode* node);
 };
 
 class NNGGrid
@@ -122,7 +126,7 @@ public:
     float width;
     float height;
     float area;
-    vector<int> gridTreeNodes;// store treenode id here
+    vector<int> gridTreeNodes; // store treenode id here
     double getArea()
     {
         area = width * height;

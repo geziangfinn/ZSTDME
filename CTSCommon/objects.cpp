@@ -1209,3 +1209,59 @@ Segment intersect(Segment lhs, Segment rhs)
     }
     //! if return with id=-1, no intersection
 }
+
+double solveForX_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, double L, vector<metal> metals)
+{
+    // solve for X, consider TSV
+    assert(nodeMerge->metalLayerIndex < metals.size());
+    metal mergeMetal = metals[nodeMerge->metalLayerIndex];
+
+    double rw = mergeMetal.rw;
+    double cw = mergeMetal.cw;
+
+    double beta = TSV_UNIT_RESISTANCE * (abs(nodeRight->layer - nodeMerge->layer) * nodeRight->loadCapacitance -
+                                         abs(nodeMerge->layer - nodeLeft->layer) * nodeLeft->loadCapacitance +
+                                         0.5 * TSV_UNIT_CAPACITANCE * (pow((nodeRight->layer - nodeMerge->layer), 2) - pow((nodeMerge->layer - nodeLeft->layer), 2)));
+
+    double numerator = (nodeRight->delay - nodeLeft->delay) + rw * L * (nodeRight->loadCapacitance + 0.5 * cw * L) + beta + TSV_UNIT_RESISTANCE * cw * abs(nodeRight->layer - nodeMerge->layer) * L;
+    double denominator = rw * (nodeLeft->loadCapacitance + nodeRight->loadCapacitance + cw * L);
+    double x = numerator / denominator;
+    if (!double_less(x, 0.0) && !double_greater(x, 0.0)) //!!!!
+    {
+        x = 0.0;
+    }
+    return x;
+}
+
+double solveForLPrime_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, int tag, vector<metal> metals)
+{
+    // tag = 0: |eb| = L'
+    // tag = 1: |ea| = L'
+    // solve for L', consider TSV
+    assert(nodeMerge->metalLayerIndex < metals.size());
+    metal mergeMetal = metals[nodeMerge->metalLayerIndex];
+
+    double rw = mergeMetal.rw;
+    double cw = mergeMetal.cw;
+
+    double alphaC;
+    double beta;
+    double numerator;
+    if (tag == 0)
+    {
+        alphaC = rw * nodeRight->loadCapacitance + TSV_UNIT_RESISTANCE * cw * abs(nodeRight->layer - nodeMerge->layer); // see abk and DME 3D paper
+        beta = TSV_UNIT_RESISTANCE * (abs(nodeRight->layer - nodeMerge->layer) * nodeRight->loadCapacitance -
+                                      abs(nodeMerge->layer - nodeLeft->layer) * nodeLeft->loadCapacitance +
+                                      0.5 * TSV_UNIT_CAPACITANCE * (pow(nodeRight->layer - nodeMerge->layer, 2) - pow(nodeMerge->layer - nodeLeft->layer, 2)));
+        numerator = sqrt(2 * rw * cw * (nodeLeft->delay - nodeRight->delay) + alphaC * alphaC - 2 * rw * cw * beta) - alphaC;
+    }
+    else
+    {
+        alphaC = rw * nodeLeft->loadCapacitance + TSV_UNIT_RESISTANCE * cw * abs(nodeLeft->layer - nodeMerge->layer);
+        beta = TSV_UNIT_RESISTANCE * (abs(nodeMerge->layer - nodeLeft->layer) * nodeLeft->loadCapacitance -
+                                      abs(nodeRight->layer - nodeMerge->layer) * nodeRight->loadCapacitance +
+                                      0.5 * TSV_UNIT_CAPACITANCE * (pow((nodeLeft->layer - nodeMerge->layer), 2) - pow((nodeMerge->layer - nodeRight->layer), 2))); //? double check here!!!
+        numerator = sqrt(2 * rw * cw * (nodeRight->delay - nodeLeft->delay) + alphaC * alphaC - 2 * rw * cw * beta) - alphaC;
+    }
+    return numerator / (rw * cw);
+}

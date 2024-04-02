@@ -3,12 +3,27 @@
 #include "global.h"
 #include "arghandler.h"
 
+struct metal
+{
+    double cw; // unit capacitance of metal
+    double rw; // unit resistance of metal
+    double lw; // unit inductance of metal
+};
+
+struct wire
+{
+    int left_id;
+    int right_id;
+    int metal_index;
+};
+
 class Sink : public Point_2D
 {
 public:
     string name;
     int id;
     double capacitance;
+    int layer; // layer in 3D IC
     Sink() {}
     Sink(int _id, double _x, double _y) : id(_id)
     {
@@ -28,6 +43,7 @@ public:
         name = "";
         id = -1;
         capacitance = 0.0;
+        layer = -1;
     }
 
     string str_xy()
@@ -104,7 +120,7 @@ public:
         os << "Seg: (" << seg.lowerPoint << "," << seg.higherPoint << ")";
         return os;
     }
-    double slope();                 // get slope of segment
+    double slope(); // get slope of segment
 };
 
 class TRR
@@ -147,6 +163,10 @@ public:
     TreeNode *leftChild;
     TreeNode *rightChild;
     TreeNode *parent;
+    int level;           // level in the binary tree
+    int layer;           // layer in 3D IC
+    int metalLayerIndex; // indicate the metal used  to connect this node with its childs
+    pair<int, int> el;   // for DLE, see the DLE paper
     TreeNode(int _id)
     {
         init();
@@ -159,6 +179,9 @@ public:
         parent = NULL;
         trr = TRR();
         delay = 0.0;
+        level = -1;
+        layer = -1;
+        metalLayerIndex = -1;
     }
 
     void set_lc(TreeNode *child) { leftChild = child; }
@@ -220,4 +243,8 @@ void TRRBasedMerge(TreeNode *, TreeNode *, TreeNode *);
 bool segmentOnSameLine(Segment, Segment);
 Segment TRRintersectSeg(TRR trr, Segment seg);
 Segment intersect(Segment lhs, Segment rhs); // lhs: left hand side, rhs: right hand side
+
+double solveForX_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, double L, vector<metal> metals);
+double solveForLPrime_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, int tag, vector<metal> metals); // see κ prime in the abk paper
+
 #endif
