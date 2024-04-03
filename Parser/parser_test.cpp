@@ -4,7 +4,7 @@
 using namespace std;
 int main(int argc, char *argv[])
 {
-    ISPD2009Parser parser;
+    ISPD2009Parser_3D parser;
     CTSDB* ctsdb=new CTSDB();
     gArg.Init(argc, argv);
     if (argc < 2)
@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
     if (strcmp(argv[1] + 1, "input") == 0) // -aux, argv[1]=='-'
     {
         // bookshelf
-        printf("Use ISPD2009 format\n");
+        printf("Use ISPD2009_3D format\n");
 
         string filename = argv[2];
         string::size_type pos = filename.rfind("/");

@@ -12,6 +12,8 @@ public:
     vector<Sink> dbSinks;
     vector<Blockage> dbBlockages;
     Point_2D clockSource;
+    vector<metal> dbMetals;
+    metal TSV;
 
     void init()
     {

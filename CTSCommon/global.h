@@ -49,8 +49,10 @@ const string padding(30, '=');
 #define ELMORE_DELAY 1
 #define UNIT_CAPACITANCE 1
 #define UNIT_RESISTANCE 1
-#define TSV_UNIT_RESISTANCE 1
-#define TSV_UNIT_CAPACITANCE 1
+// #define TSV_UNIT_RESISTANCE 1
+// #define TSV_UNIT_CAPACITANCE 1
+#define CAPACITANCE_CONSTRAINT 300e-15 //! 300 fF
+#define BUFFER_CAPACITANCE 35e-15      //! 35fF
 
 enum REGION
 {

@@ -138,7 +138,7 @@ void ZSTDMERouter::bottomUp()
             }
             else if (delayModel == ELMORE_DELAY) // elmore delay, see the book for clear explanation
             {
-                double x = solveForX_multiMetal(curNode->leftChild, curNode->rightChild, curNode, L, metals);
+                double x = solveForX_multiMetal(curNode->leftChild, curNode->rightChild, curNode, L, db->dbMetals, db->TSV);
                 if (double_greaterorequal(x, 0.0) && double_lessorequal(x, L))
                 {
                     e_a = x;
@@ -147,13 +147,13 @@ void ZSTDMERouter::bottomUp()
                 else if (double_less(x, 0.0))
                 {
                     e_a = 0.0;
-                    e_b = solveForLPrime_multiMetal(curNode->leftChild, curNode->rightChild, curNode, 0, metals);
+                    e_b = solveForLPrime_multiMetal(curNode->leftChild, curNode->rightChild, curNode, 0, db->dbMetals, db->TSV);
                     assert(double_greater(e_b, L));
                 }
                 else if (double_less(L, x))
                 {
                     e_b = 0.0;
-                    e_a = solveForLPrime_multiMetal(curNode->leftChild, curNode->rightChild, curNode, 1, metals);
+                    e_a = solveForLPrime_multiMetal(curNode->leftChild, curNode->rightChild, curNode, 1, db->dbMetals, db->TSV);
                     assert(double_greater(e_a, L));
                 }
             }
@@ -164,6 +164,7 @@ void ZSTDMERouter::bottomUp()
             }
 
             // todo: add code for RLC calculation
+            RLCCalculation();
 
             curNode->leftChild->trr.radius = e_a; //! e_a for leftChild and e_b for rightChild
             curNode->rightChild->trr.radius = e_b;
@@ -183,8 +184,8 @@ void ZSTDMERouter::bottomUp()
             }
             curNode->trr.core = ms_v;
 
-            updateMergeDelay(curNode, curNode->leftChild, curNode->rightChild, e_a, e_b);
-            updateMergeCapacitance(curNode, curNode->leftChild, curNode->rightChild, e_a, e_b); //? there is a same function in RLC_calculation
+            // updateMergeDelay_multiMetal(curNode, curNode->leftChild, curNode->rightChild, e_a, e_b, db->dbMetals, db->TSV);
+            updateMergeCapacitance_multiMetal(curNode, curNode->leftChild, curNode->rightChild, e_a, e_b, db->dbMetals, db->TSV); //? there is a same function in RLC_calculation
         }
         else
         {
@@ -622,7 +623,7 @@ void ZSTDMERouter::metalLayerAssignment()
 {
     //! assume metal layer index start from 0, no dummy metal now!
     int treeLevelCount = 0;                                                    // number of tree levels
-    int metalLayerCount = metals.size();                                       //! no dummy metal!!!
+    int metalLayerCount = db->dbMetals.size();                                 //! no dummy metal!!!
     std::function<void(TreeNode *)> preOrderTraversal = [&](TreeNode *curNode) //!&
     {
         if (curNode)
@@ -649,7 +650,7 @@ void ZSTDMERouter::metalLayerAssignment()
         if (curNode)
         {
             int curId = curNode->id;
-            curNode->metalLayerIndex = ceil((double(curNode->level) / double(treeLevelCount)) * double(metals.size())) - 1; // -1 because index of the vector metals starts from 1
+            curNode->metalLayerIndex = ceil((double(curNode->level) / double(treeLevelCount)) * double(db->dbMetals.size())) - 1; // -1 because index of the vector metals starts from 1
             preOrderTraversal(curNode->leftChild);
             preOrderTraversal(curNode->rightChild);
         }

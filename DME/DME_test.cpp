@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
     if (strcmp(argv[1] + 1, "input") == 0) // -input, argv[1]=='-'
     {
         // bookshelf
-        printf("Use ISPD2009 format\n");
+        printf("Use ISPD2009_3D format\n");
 
         string filename = argv[2];
         string::size_type pos = filename.rfind("/");

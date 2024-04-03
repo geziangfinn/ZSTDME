@@ -1,6 +1,6 @@
 #include "objects.h"
 #include <objects.h>
-#include "plotter.h"
+#include "../Plotter/plotter.h"
 double Segment::slope()
 {
     if (isPoint())
@@ -1210,7 +1210,7 @@ Segment intersect(Segment lhs, Segment rhs)
     //! if return with id=-1, no intersection
 }
 
-double solveForX_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, double L, vector<metal> metals)
+double solveForX_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, double L, vector<metal> metals, metal TSV)
 {
     // solve for X, consider TSV
     assert(nodeMerge->metalLayerIndex < metals.size());
@@ -1219,11 +1219,11 @@ double solveForX_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *n
     double rw = mergeMetal.rw;
     double cw = mergeMetal.cw;
 
-    double beta = TSV_UNIT_RESISTANCE * (abs(nodeRight->layer - nodeMerge->layer) * nodeRight->loadCapacitance -
-                                         abs(nodeMerge->layer - nodeLeft->layer) * nodeLeft->loadCapacitance +
-                                         0.5 * TSV_UNIT_CAPACITANCE * (pow((nodeRight->layer - nodeMerge->layer), 2) - pow((nodeMerge->layer - nodeLeft->layer), 2)));
+    double beta = TSV.rw * (abs(nodeRight->layer - nodeMerge->layer) * nodeRight->loadCapacitance -
+                            abs(nodeMerge->layer - nodeLeft->layer) * nodeLeft->loadCapacitance +
+                            0.5 * TSV.cw * (pow((nodeRight->layer - nodeMerge->layer), 2) - pow((nodeMerge->layer - nodeLeft->layer), 2)));
 
-    double numerator = (nodeRight->delay - nodeLeft->delay) + rw * L * (nodeRight->loadCapacitance + 0.5 * cw * L) + beta + TSV_UNIT_RESISTANCE * cw * abs(nodeRight->layer - nodeMerge->layer) * L;
+    double numerator = (nodeRight->delay - nodeLeft->delay) + rw * L * (nodeRight->loadCapacitance + 0.5 * cw * L) + beta + TSV.rw * cw * abs(nodeRight->layer - nodeMerge->layer) * L;
     double denominator = rw * (nodeLeft->loadCapacitance + nodeRight->loadCapacitance + cw * L);
     double x = numerator / denominator;
     if (!double_less(x, 0.0) && !double_greater(x, 0.0)) //!!!!
@@ -1233,7 +1233,7 @@ double solveForX_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *n
     return x;
 }
 
-double solveForLPrime_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, int tag, vector<metal> metals)
+double solveForLPrime_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, int tag, vector<metal> metals, metal TSV)
 {
     // tag = 0: |eb| = L'
     // tag = 1: |ea| = L'
@@ -1249,19 +1249,71 @@ double solveForLPrime_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNo
     double numerator;
     if (tag == 0)
     {
-        alphaC = rw * nodeRight->loadCapacitance + TSV_UNIT_RESISTANCE * cw * abs(nodeRight->layer - nodeMerge->layer); // see abk and DME 3D paper
-        beta = TSV_UNIT_RESISTANCE * (abs(nodeRight->layer - nodeMerge->layer) * nodeRight->loadCapacitance -
-                                      abs(nodeMerge->layer - nodeLeft->layer) * nodeLeft->loadCapacitance +
-                                      0.5 * TSV_UNIT_CAPACITANCE * (pow(nodeRight->layer - nodeMerge->layer, 2) - pow(nodeMerge->layer - nodeLeft->layer, 2)));
+        alphaC = rw * nodeRight->loadCapacitance + TSV.rw * cw * abs(nodeRight->layer - nodeMerge->layer); // see abk and DME 3D paper
+        beta = TSV.rw * (abs(nodeRight->layer - nodeMerge->layer) * nodeRight->loadCapacitance -
+                         abs(nodeMerge->layer - nodeLeft->layer) * nodeLeft->loadCapacitance +
+                         0.5 * TSV.cw * (pow(nodeRight->layer - nodeMerge->layer, 2) - pow(nodeMerge->layer - nodeLeft->layer, 2)));
         numerator = sqrt(2 * rw * cw * (nodeLeft->delay - nodeRight->delay) + alphaC * alphaC - 2 * rw * cw * beta) - alphaC;
     }
     else
     {
-        alphaC = rw * nodeLeft->loadCapacitance + TSV_UNIT_RESISTANCE * cw * abs(nodeLeft->layer - nodeMerge->layer);
-        beta = TSV_UNIT_RESISTANCE * (abs(nodeMerge->layer - nodeLeft->layer) * nodeLeft->loadCapacitance -
-                                      abs(nodeRight->layer - nodeMerge->layer) * nodeRight->loadCapacitance +
-                                      0.5 * TSV_UNIT_CAPACITANCE * (pow((nodeLeft->layer - nodeMerge->layer), 2) - pow((nodeMerge->layer - nodeRight->layer), 2))); //? double check here!!!
+        alphaC = rw * nodeLeft->loadCapacitance + TSV.rw * cw * abs(nodeLeft->layer - nodeMerge->layer);
+        beta = TSV.rw * (abs(nodeMerge->layer - nodeLeft->layer) * nodeLeft->loadCapacitance -
+                         abs(nodeRight->layer - nodeMerge->layer) * nodeRight->loadCapacitance +
+                         0.5 * TSV.cw * (pow((nodeLeft->layer - nodeMerge->layer), 2) - pow((nodeMerge->layer - nodeRight->layer), 2))); //? double check here!!!
         numerator = sqrt(2 * rw * cw * (nodeRight->delay - nodeLeft->delay) + alphaC * alphaC - 2 * rw * cw * beta) - alphaC;
     }
     return numerator / (rw * cw);
 }
+
+void updateMergeCapacitance_multiMetal(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb, vector<metal> metals, metal TSV)
+{
+    metal merge_metal = metals[nodeMerge->metalLayerIndex];
+    double rw = merge_metal.rw;
+    double cw = merge_metal.cw;
+    float delta_C = nodeLeft->loadCapacitance + nodeRight->loadCapacitance + cw * (ea + eb) + TSV.cw * (abs(nodeRight->layer - nodeLeft->layer));
+    // 考虑了buffer insertion的电容update
+    if (delta_C > CAPACITANCE_CONSTRAINT)
+    {
+        nodeMerge->loadCapacitance = BUFFER_CAPACITANCE;
+        nodeMerge->buffered = true;
+        // bufferCount++;
+        return;
+    }
+    nodeMerge->loadCapacitance = delta_C;
+}
+
+void RLCCalculation(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double &ea, double &eb)
+{
+    
+}
+
+// void updateMergeDelay_multiMetal(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb, vector<metal> metals, metal TSV)
+// {
+//     metal merge_metal = metals[nodeMerge->metalLayerIndex];
+//     double rw = merge_metal.rw;
+//     double cw = merge_metal.cw;
+//     float deltaDelay = nodeLeft->delay + 0.695 * (0.5 * rw * cw * ea * ea +
+//                                                   rw * (nodeLeft->loadCapacitance + TSV.cw * abs(nodeMerge->layer - nodeLeft->layer)) * ea +
+//                                                   TSV.rw * (nodeLeft->loadCapacitance * abs(nodeMerge->layer - nodeLeft->layer) + 0.5 * TSV.cw * (nodeMerge->layer - nodeLeft->layer) * (nodeMerge->layer - nodeLeft->layer)) -
+//                                                   (rw * TSV.cw - TSV.rw * cw) * abs(nodeMerge->layer - nodeLeft->layer) * ea);
+//     float deltaDelayRight = nodeRight->delay + 0.695 * (0.5 * rw * cw * eb * eb +
+//                                                         rw * (nodeRight->loadCapacitance + TSV.cw * abs(nodeMerge->layer - nodeRight->layer)) * eb +
+//                                                         TSV.rw * (nodeRight->loadCapacitance * abs(nodeMerge->layer - nodeRight->layer) + 0.5 * TSV.cw * (nodeMerge->layer - nodeRight->layer) * (nodeMerge->layer - nodeRight->layer)) -
+//                                                         (rw * TSV.cw - TSV.rw * cw) * abs(nodeMerge->layer - nodeRight->layer) * eb);
+
+//     /*float delta_delay_right = nodeRight->delay +
+//             r_w * (ea + eb) * (nodeRight->C + 0.5 * c_w * (ea + eb)) +
+//             0.5 * r_w * c_w * ea * ea -
+//             r_w * (nodeRight->C + c_v * abs(nodeMerge->layer - nodeRight->layer) + c_w * (ea + eb)) * ea +
+//             r_v * (nodeRight->C * abs(nodeMerge->layer - nodeRight->layer) + 0.5 * c_v * abs(nodeMerge->layer - nodeRight->layer) * abs(nodeMerge->layer - nodeRight->layer)) +
+//             r_w * c_w * abs(nodeMerge->layer - nodeRight->layer) * (ea + eb) -
+//             (r_w * c_v - r_v * c_w) * abs(nodeMerge->layer - nodeRight->layer) * ea;*/
+//     // printf("/****Test Merge Delay****/\n"
+//     //        "Delay before merge: Left: %f, Right: %f, after: Left: %f,  Right: %f\n", nodeLeft->delay,nodeRight->delay, delta_delay, delta_delay_right);
+//     // 按最大delay进行录入
+//     if (deltaDelay >= deltaDelayRight)
+//         nodeMerge->delay = deltaDelay;
+//     else
+//         nodeMerge->delay = deltaDelayRight;
+// }

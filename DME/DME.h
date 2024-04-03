@@ -22,6 +22,8 @@ public:
 
     int sinkCount;  // test 1
     int delayModel; // 0 for linear and 1 for elmore
+    int bufferCount;
+    int TSVCount;
 
     TreeTopology *topology;
 
@@ -32,13 +34,13 @@ public:
 
     CTSDB *db;
 
-    vector<metal> metals;
-
     void init()
     {
         db = NULL;
         sinkCount = 0;
         delayModel = -1;
+        bufferCount=0;
+        TSVCount=0;
 
         treeNodeLocation.clear();
         solution.clear();
@@ -69,6 +71,9 @@ public:
     void buildSolution_ISPD();
 
     void metalLayerAssignment();
+
+    void countBuffer();
+    void countTSV();
 
     Segment nineRegionBasedFeasibleMergeSegmentCutting(Segment, Segment); // See the paper in README
 };

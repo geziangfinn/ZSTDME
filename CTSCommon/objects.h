@@ -182,6 +182,8 @@ public:
         level = -1;
         layer = -1;
         metalLayerIndex = -1;
+        el = make_pair(-1, -1);
+        buffered = false;
     }
 
     void set_lc(TreeNode *child) { leftChild = child; }
@@ -244,7 +246,10 @@ bool segmentOnSameLine(Segment, Segment);
 Segment TRRintersectSeg(TRR trr, Segment seg);
 Segment intersect(Segment lhs, Segment rhs); // lhs: left hand side, rhs: right hand side
 
-double solveForX_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, double L, vector<metal> metals);
-double solveForLPrime_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, int tag, vector<metal> metals); // see κ prime in the abk paper
+double solveForX_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, double L, vector<metal> metals, metal TSV);
+double solveForLPrime_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, int tag, vector<metal> metals, metal TSV); // see κ prime in the abk paper
+void updateMergeCapacitance_multiMetal(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb, vector<metal> metals, metal TSV);
+void updateMergeDelay_multiMetal(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb, vector<metal> metals, metal TSV);
 
+void RLCCalculation(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double &ea, double &eb);
 #endif
