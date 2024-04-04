@@ -249,7 +249,9 @@ Segment intersect(Segment lhs, Segment rhs); // lhs: left hand side, rhs: right 
 double solveForX_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, double L, vector<metal> metals, metal TSV);
 double solveForLPrime_multiMetal(TreeNode *nodeLeft, TreeNode *nodeRight, TreeNode *nodeMerge, int tag, vector<metal> metals, metal TSV); // see κ prime in the abk paper
 void updateMergeCapacitance_multiMetal(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb, vector<metal> metals, metal TSV);
-void updateMergeDelay_multiMetal(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb, vector<metal> metals, metal TSV);
+// void updateMergeDelay_multiMetal(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb, vector<metal> metals, metal TSV);
 
-void RLCCalculation(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double &ea, double &eb);
+void RLCCalculation(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double &ea, double &eb, vector<metal> metals, metal TSV);
+double calculateDelayRLC(TreeNode *nodeMerge, TreeNode *nodeChild, float wireLength, vector<metal> metals, metal TSV);
+void radiusAjustment(double &decreased, double &incresed, TreeNode *nodeWithHigherDelay, TreeNode *nodeWithLowerDelay, double step);
 #endif

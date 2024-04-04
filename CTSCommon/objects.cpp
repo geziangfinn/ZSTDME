@@ -1283,9 +1283,131 @@ void updateMergeCapacitance_multiMetal(TreeNode *nodeMerge, TreeNode *nodeLeft, 
     nodeMerge->loadCapacitance = delta_C;
 }
 
-void RLCCalculation(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double &ea, double &eb)
+void RLCCalculation(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double &ea, double &eb, vector<metal> metals, metal TSV)
 {
-    
+
+    float t_a, t_b;
+    //! ea for left and eb for right
+    double skewModifyStep = 1;
+    t_a = calculateDelayRLC(nodeMerge, nodeLeft, ea, metals, TSV);
+    t_b = calculateDelayRLC(nodeMerge, nodeRight, eb, metals, TSV);
+    // 需要考虑extra wirelength存在的情况。但是尽量不要引入额外的线长。
+    //  cout<<"Iterating...."<<endl;
+    int count = 0;
+    while (fabs(t_a + nodeLeft->delay - (t_b + nodeRight->delay)) > skewModifyStep)
+    { //? >=1?
+        count++;
+        if (t_a + nodeLeft->delay > t_b + nodeRight->delay) // ? does this gurantee that ea>eb?
+        {
+            // assert(ea>=eb);
+            //! decrease ea and increas eb
+            radiusAjustment(ea, eb, nodeLeft, nodeRight, skewModifyStep);
+        }
+        else
+        {
+            // assert(ea<=eb);
+            //! decrease eb and increas ea
+            radiusAjustment(eb, ea, nodeRight, nodeLeft, skewModifyStep); // ? does this gurantee that eb>ea?
+        }
+
+        t_a = calculateDelayRLC(nodeMerge, nodeLeft, ea, metals, TSV);
+        t_b = calculateDelayRLC(nodeMerge, nodeRight, eb, metals, TSV);
+        if (count > 1000)
+        {
+            cout << endl
+                 << "t_a + nodeLeft->delay: " << t_a + nodeLeft->delay << endl;
+            cout << endl
+                 << "t_b + nodeRight->delay: " << t_b + nodeRight->delay << endl;
+        }
+    }
+    // // cout<<"Iteration done"<<endl;
+    // //printf("原本的 delay: left: %f, right: %f\n", nodeLeft->delay, nodeRight->delay);
+    // // printf("left: %f, right: %f\n t_a: %f, t_b: %f\n total left: %f, total right: %f\n", nodeLeft->delay, nodeRight->delay, t_a, t_b, t_a+nodeLeft->delay, t_b + nodeRight->delay);
+    // t_a = calc_delay_RLC(nodeMerge, nodeLeft, ea);
+    // t_b = calc_delay_RLC(nodeMerge, nodeRight, eb);
+    // // printf("RC delay: %f, %f\n", t_a, t_b);
+
+    //! merge node delay updated here!
+    nodeMerge->delay = max(t_a + nodeLeft->delay, t_b + nodeRight->delay);
+}
+
+double calculateDelayRLC(TreeNode *nodeMerge, TreeNode *nodeChild, float wireLength, vector<metal> metals, metal TSV)
+{
+    // L of TSV is ignored here???
+    float t_pdi, theta, omega, numerator, denominator, elmore;
+    metal merge_metal = metals[nodeMerge->metalLayerIndex];
+    double rw = merge_metal.rw;
+    double cw = merge_metal.cw;
+    double lw = merge_metal.lw;
+
+    if (wireLength == 0)
+        return 0;
+    // 如果两节点中间没有TSV
+    if (nodeChild->loadCapacitance > CAPACITANCE_CONSTRAINT)
+    {
+        cout << "fdafa" << nodeChild->loadCapacitance << endl;
+    }
+    assert(nodeChild->loadCapacitance <= CAPACITANCE_CONSTRAINT);
+    numerator = wireLength * rw * (0.5 * wireLength * cw + nodeChild->loadCapacitance);
+    // 这里分母还没算完，后续要开根
+    denominator = wireLength * lw * (0.5 * wireLength * cw + nodeChild->loadCapacitance);
+    if (nodeMerge->layer != nodeChild->layer)
+    {
+        numerator += TSV.rw * (0.5 * TSV.cw + nodeChild->loadCapacitance + wireLength * cw);
+        // denominator += l_v * (0.5 * c_v_standard + calc_standard_Capacitance(nodeChild->C + wireLength * c_w));
+    }
+    // 给分母开根
+    denominator = sqrt(denominator);
+    // 154953990144.000000
+    theta = 0.5 * (numerator / denominator);
+    omega = 1 / denominator;
+    elmore = 0.695 * numerator;
+    //? 将单位换算回ps
+    //? 不calulate standard C 之后还需要换算吗
+    // t_pdi = roundf(1000000000000000 * ((1.047 * exp((-1) * theta / 0.85)) / omega + elmore));
+    t_pdi = roundf(((1.047 * exp((-1) * theta / 0.85)) / omega + elmore));
+    // printf("before : %f\n", 1000000000000000 * (  (1.047 * exp((-1)*theta/0.85))/omega));
+    return t_pdi;
+}
+void radiusAjustment(double &decreased, double &incresed, TreeNode *nodeWithHigherDelay, TreeNode *nodeWithLowerDelay, double step)
+{
+    // delay_a > delay_b, ea -= x/2, eb+= x/2 ea: higher eb: lower
+    double minDistance = minManhattanDist(nodeWithHigherDelay, nodeWithLowerDelay);
+
+    assert(decreased != 0 || incresed != 0);
+
+    if (decreased != 0 && incresed != 0) // if no node absolutely has extra wirelength(else, one of ea and eb should be 0) one special case: ea/eb=0 and eb/ea=d
+    {
+        if (decreased >= step / 2 && incresed <= minDistance - step / 2)
+        {
+            decreased -= step / 2;
+            incresed += step / 2;
+        }
+        else if (decreased < step / 2) // then eb must > min_manhattan-x/2, in this case, either decrease step or allow extra wirelength
+        {                              // here we allow extra wirelength
+            double delta = step - decreased;
+            decreased = 0;
+            incresed += delta;
+        }
+    }
+    else if (decreased == 0)
+    {
+        // cout<<"should eb has extra wirelength?\n";
+        incresed += step;
+    }
+    else if (incresed == 0)
+    {
+        if ((decreased - minDistance) > step)
+        {
+            decreased -= step;
+        }
+        else
+        {
+            double delta = step - (decreased - minDistance);
+            decreased -= step;
+            incresed += delta;
+        }
+    }
 }
 
 // void updateMergeDelay_multiMetal(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb, vector<metal> metals, metal TSV)

@@ -39,8 +39,8 @@ public:
         db = NULL;
         sinkCount = 0;
         delayModel = -1;
-        bufferCount=0;
-        TSVCount=0;
+        bufferCount = 0;
+        TSVCount = 0;
 
         treeNodeLocation.clear();
         solution.clear();
@@ -61,7 +61,7 @@ public:
     void ZSTDME(); // Deferred-Merge Embedding
     void topDown();
     void bottomUp();
-    void repairSolution();// eliminate overlap between clock tree and obstacles, performed after buildSolution. Ignore its impact on skew for now. It will cause higher wirelength, for sure
+    void repairSolution(); // eliminate overlap between clock tree and obstacles, performed after buildSolution. Ignore its impact on skew for now. It will cause higher wirelength, for sure
 
     void drawBottomUp();
     void drawBottomUpMerge(string name, TRR trr1, TRR trr2, Segment merge);
@@ -72,10 +72,15 @@ public:
 
     void metalLayerAssignment();
 
+    void DLE_3D();
+
     void countBuffer();
     void countTSV();
 
     Segment nineRegionBasedFeasibleMergeSegmentCutting(Segment, Segment); // See the paper in README
+private:
+    void DLE_loop(TreeNode *node);
+    void NearestAssign(TreeNode *node);
 };
 
 class BSTDMERouter

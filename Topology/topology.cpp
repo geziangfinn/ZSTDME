@@ -635,62 +635,6 @@ int TreeTopology::mergeNodes_BucketDecomposition(int leftChildID, int rightChild
     return mergeNode->id;
 }
 
-void TreeTopology::DLE_3D()
-{
-    DLE_loop(root);
-    root->layer = root->el.first;
-    assert(root->parent == NULL);
-    NearestAssign(root);
-}
-
-void TreeTopology::DLE_loop(TreeNode *node)
-{
-    if (node)
-    {
-        // 如果已经是根节点，跳过
-        if (!node->leftChild && !node->rightChild)
-        {
-            node->el.first = node->layer;
-            node->el.second = node->layer;
-            return;
-        }
-        // 自下而上递归
-        DLE_loop(node->leftChild);
-        DLE_loop(node->rightChild);
-
-        int l1 = max(node->leftChild->el.first, node->rightChild->el.first);
-        int l2 = min(node->leftChild->el.second, node->rightChild->el.second);
-        node->el.first = min(l1, l2);
-        node->el.second = max(l1, l2);
-    }
-}
-
-void TreeTopology::NearestAssign(TreeNode *node)
-{
-    if (!node->leftChild && !node->rightChild)
-        return;
-
-    if (node->parent)
-    {
-        assert(node->el.first <= node->el.second);
-        if (node->el.first > node->parent->layer)
-        {
-            node->layer = node->el.first;
-        }
-        else if (node->el.second < node->parent->layer)
-        {
-            node->layer = node->el.second;
-        }
-        else
-        {
-            node->layer = node->parent->layer;
-        }
-    }
-
-    NearestAssign(node->leftChild);
-    NearestAssign(node->rightChild);
-}
-
 void TreeTopology::calculateNearestNeighbor()
 {
     for (int i = 0; i < globalTreeNodes.size(); i++)

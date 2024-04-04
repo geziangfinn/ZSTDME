@@ -163,8 +163,8 @@ void ZSTDMERouter::bottomUp()
                 exit(0);
             }
 
-            // todo: add code for RLC calculation
-            RLCCalculation();
+            //! recalculate ea and eb considering L based on the results using elmore delay
+            RLCCalculation(curNode, curNode->leftChild, curNode->rightChild, e_a, e_b, db->dbMetals, db->TSV);
 
             curNode->leftChild->trr.radius = e_a; //! e_a for leftChild and e_b for rightChild
             curNode->rightChild->trr.radius = e_b;
@@ -185,7 +185,7 @@ void ZSTDMERouter::bottomUp()
             curNode->trr.core = ms_v;
 
             // updateMergeDelay_multiMetal(curNode, curNode->leftChild, curNode->rightChild, e_a, e_b, db->dbMetals, db->TSV);
-            updateMergeCapacitance_multiMetal(curNode, curNode->leftChild, curNode->rightChild, e_a, e_b, db->dbMetals, db->TSV); //? there is a same function in RLC_calculation
+            updateMergeCapacitance_multiMetal(curNode, curNode->leftChild, curNode->rightChild, e_a, e_b, db->dbMetals, db->TSV);
         }
         else
         {
@@ -651,10 +651,68 @@ void ZSTDMERouter::metalLayerAssignment()
         {
             int curId = curNode->id;
             curNode->metalLayerIndex = ceil((double(curNode->level) / double(treeLevelCount)) * double(db->dbMetals.size())) - 1; // -1 because index of the vector metals starts from 1
-            preOrderTraversal(curNode->leftChild);
-            preOrderTraversal(curNode->rightChild);
+            assert(curNode->metalLayerIndex<db->dbMetals.size());
+            preOrderTraversal_SetMetal(curNode->leftChild);
+            preOrderTraversal_SetMetal(curNode->rightChild);
         }
     };
+    preOrderTraversal_SetMetal(topology->root);
+}
+
+void ZSTDMERouter::DLE_3D()
+{
+    DLE_loop(topology->root);
+    topology->root->layer = topology->root->el.first;
+    assert(topology->root->parent == NULL);
+    NearestAssign(topology->root);
+}
+
+void ZSTDMERouter::DLE_loop(TreeNode *node)
+{
+    if (node)
+    {
+        // 如果已经是根节点，跳过
+        if (!node->leftChild && !node->rightChild)
+        {
+            node->el.first = node->layer;
+            node->el.second = node->layer;
+            return;
+        }
+        // 自下而上递归
+        DLE_loop(node->leftChild);
+        DLE_loop(node->rightChild);
+
+        int l1 = max(node->leftChild->el.first, node->rightChild->el.first);
+        int l2 = min(node->leftChild->el.second, node->rightChild->el.second);
+        node->el.first = min(l1, l2);
+        node->el.second = max(l1, l2);
+    }
+}
+
+void ZSTDMERouter::NearestAssign(TreeNode *node)
+{
+    if (!node->leftChild && !node->rightChild)
+        return;
+
+    if (node->parent)
+    {
+        assert(node->el.first <= node->el.second);
+        if (node->el.first > node->parent->layer)
+        {
+            node->layer = node->el.first;
+        }
+        else if (node->el.second < node->parent->layer)
+        {
+            node->layer = node->el.second;
+        }
+        else
+        {
+            node->layer = node->parent->layer;
+        }
+    }
+
+    NearestAssign(node->leftChild);
+    NearestAssign(node->rightChild);
 }
 
 // Segment ZSTDMERouter::TRRintersectTRR(TRR &trr1, TRR &trr2)

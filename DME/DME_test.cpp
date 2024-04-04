@@ -6,7 +6,7 @@
 using namespace std;
 int main(int argc, char *argv[])
 {
-    ISPD2009Parser parser;
+    ISPD2009Parser_3D parser;
     CTSDB *ctsdb = new CTSDB();
     gArg.Init(argc, argv);
     if (argc < 2)
@@ -53,8 +53,9 @@ int main(int argc, char *argv[])
     }
     ctsdb->showCTSdbInfo();
     TreeTopology *topo = new TreeTopology(ctsdb);
-    // topo->buildTreeUsingNearestNeighborGraph();
-    topo->buildTreeUsingNearestNeighborGraph_BucketDecomposition();
+    topo->buildTreeUsingNearestNeighborGraph();
+    // topo->buildTreeUsingNearestNeighborGraph_BucketDecomposition();
+
     ZSTDMERouter *router = new ZSTDMERouter(ctsdb);
     int delayModel=ELMORE_DELAY;
     if(gArg.CheckExist("linearDelay"))
@@ -63,6 +64,10 @@ int main(int argc, char *argv[])
     }
     router->setDelayModel(delayModel);
     router->setTopology(topo);
+    router->DLE_3D();
+    
+    router->metalLayerAssignment();
+    router->bottomUp();
 
     //router->ZSTDME();
     router->drawBottomUp();

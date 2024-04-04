@@ -98,9 +98,7 @@ public:
     void addNodeToGrid(int);
     int mergeNodes_BucketDecomposition(int, int);
 
-    void DLE_3D();
-    void DLE_loop(TreeNode* node);
-    void NearestAssign(TreeNode* node);
+
 };
 
 class NNGGrid
