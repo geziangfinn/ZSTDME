@@ -1288,13 +1288,14 @@ void RLCCalculation(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight
 
     float t_a, t_b;
     //! ea for left and eb for right
-    double skewModifyStep = 1;
+    double skewModifyStep = 100;
     t_a = calculateDelayRLC(nodeMerge, nodeLeft, ea, metals, TSV);
     t_b = calculateDelayRLC(nodeMerge, nodeRight, eb, metals, TSV);
     // 需要考虑extra wirelength存在的情况。但是尽量不要引入额外的线长。
     //  cout<<"Iterating...."<<endl;
     int count = 0;
-    while (fabs(t_a + nodeLeft->delay - (t_b + nodeRight->delay)) > skewModifyStep)
+    // cout<<setprecision(32)<< t_a + nodeLeft->delay <<" "<<(t_b + nodeRight->delay)<<" "<< skewModifyStep<<endl;
+    while (fabs(t_a + nodeLeft->delay - (t_b + nodeRight->delay)) > 1e18)
     { //? >=1?
         count++;
         if (t_a + nodeLeft->delay > t_b + nodeRight->delay) // ? does this gurantee that ea>eb?
@@ -1319,6 +1320,7 @@ void RLCCalculation(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight
             cout << endl
                  << "t_b + nodeRight->delay: " << t_b + nodeRight->delay << endl;
         }
+        cout<<"iterated for "<<count<<" times\n";
     }
     // // cout<<"Iteration done"<<endl;
     // //printf("原本的 delay: left: %f, right: %f\n", nodeLeft->delay, nodeRight->delay);
@@ -1374,9 +1376,9 @@ void radiusAjustment(double &decreased, double &incresed, TreeNode *nodeWithHigh
     // delay_a > delay_b, ea -= x/2, eb+= x/2 ea: higher eb: lower
     double minDistance = minManhattanDist(nodeWithHigherDelay, nodeWithLowerDelay);
 
-    assert(decreased != 0 || incresed != 0);
+    assert(decreased != 0.0 || incresed != 0.0);
 
-    if (decreased != 0 && incresed != 0) // if no node absolutely has extra wirelength(else, one of ea and eb should be 0) one special case: ea/eb=0 and eb/ea=d
+    if (decreased != 0.0 && incresed != 0.0) // if no node absolutely has extra wirelength(else, one of ea and eb should be 0) one special case: ea/eb=0 and eb/ea=d
     {
         if (decreased >= step / 2 && incresed <= minDistance - step / 2)
         {

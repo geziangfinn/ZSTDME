@@ -467,29 +467,138 @@ void ZSTDMERouter::buildSolution()
             SteinerPoint *lcSteiner = new SteinerPoint(leftChildLocation);
             SteinerPoint *rcSteiner = new SteinerPoint(rightChildLocation);
 
+            curSteiner->actualMergeNode = true;
+            lcSteiner->actualMergeNode = true;
+            rcSteiner->actualMergeNode = true;
+
             if (fullSolution)
             {
                 // Connect lc
-                if (double_equal(curSteiner->x, lcSteiner->x) || double_equal(curSteiner->y, lcSteiner->y))
+                assert(double_greaterorequal(lc->trr.radius, minManhattanDist(*lcSteiner, *curSteiner)));
+                assert(double_greaterorequal(rc->trr.radius, minManhattanDist(*rcSteiner, *curSteiner)));
+                if (!(double_greater(lc->trr.radius, minManhattanDist(*lcSteiner, *curSteiner)))) // no snaking for lc
+                // if(1)
                 {
-                    lcSteiner->setParent(curSteiner);
+                    if (double_equal(curSteiner->x, lcSteiner->x) || double_equal(curSteiner->y, lcSteiner->y))
+                    {
+                        lcSteiner->setParent(curSteiner);
+                    }
+                    else
+                    { // Use L-shape
+                        SteinerPoint *middle = new SteinerPoint(Point_2D(curSteiner->x, lcSteiner->y));
+                        lcSteiner->setParent(middle);
+                        middle->setParent(curSteiner);
+                    }
                 }
                 else
-                { // Use L-shape
-                    SteinerPoint *middle = new SteinerPoint(Point_2D(curSteiner->x, lcSteiner->y));
-                    lcSteiner->setParent(middle);
-                    middle->setParent(curSteiner);
+                {
+                    //! snaking
+                    double snakingWirelength = lc->trr.radius - minManhattanDist(*lcSteiner, *curSteiner);
+                    cout << "snaking!\n";
+                    SteinerPoint *snakePointForCur;
+                    SteinerPoint *snakePointForLeftChild;
+                    if (double_equal(curSteiner->x, lcSteiner->x))
+                    {
+                        // boundary check? make sure wire doesn't go outside the chip area
+                        snakePointForCur = new SteinerPoint(Point_2D(curSteiner->x + 0.5 * snakingWirelength, curSteiner->y));
+                        snakePointForLeftChild = new SteinerPoint(Point_2D(lcSteiner->x + 0.5 * snakingWirelength, lcSteiner->y));
+                        lcSteiner->setParent(snakePointForLeftChild);
+                        snakePointForLeftChild->setParent(snakePointForCur);
+                        snakePointForCur->setParent(curSteiner);
+                    }
+                    else if (double_equal(curSteiner->y, lcSteiner->y))
+                    {
+                        snakePointForCur = new SteinerPoint(Point_2D(curSteiner->x, curSteiner->y + 0.5 * snakingWirelength));
+                        snakePointForLeftChild = new SteinerPoint(Point_2D(lcSteiner->x, lcSteiner->y + 0.5 * snakingWirelength));
+                        lcSteiner->setParent(snakePointForLeftChild);
+                        snakePointForLeftChild->setParent(snakePointForCur);
+                        snakePointForCur->setParent(curSteiner);
+                    }
+                    else
+                    {
+                        // Use L-shape
+                        if (double_greater(curSteiner->x, lcSteiner->x)) // curSteiner at right of lc
+                        {
+                            snakePointForCur = new SteinerPoint(Point_2D(curSteiner->x + 0.5 * snakingWirelength, curSteiner->y));
+                            snakePointForLeftChild = new SteinerPoint(Point_2D(curSteiner->x + 0.5 * snakingWirelength, lcSteiner->y));
+                            lcSteiner->setParent(snakePointForLeftChild);
+                            snakePointForLeftChild->setParent(snakePointForCur);
+                            snakePointForCur->setParent(curSteiner);
+                        }
+                        else
+                        {
+                            snakePointForCur = new SteinerPoint(Point_2D(curSteiner->x - 0.5 * snakingWirelength, curSteiner->y));
+                            snakePointForLeftChild = new SteinerPoint(Point_2D(curSteiner->x - 0.5 * snakingWirelength, lcSteiner->y));
+                            lcSteiner->setParent(snakePointForLeftChild);
+                            snakePointForLeftChild->setParent(snakePointForCur);
+                            snakePointForCur->setParent(curSteiner);
+                        }
+                    }
+                    snakePointForCur->snakeNode = true;
+                    snakePointForLeftChild->snakeNode = true;
                 }
+
                 // Connect rc
-                if (double_equal(curSteiner->x, rcSteiner->x) || double_equal(curSteiner->y, rcSteiner->y))
+                if (!(double_greater(rc->trr.radius, minManhattanDist(*rcSteiner, *curSteiner)))) // no snaking for rc
+                // if(1)
                 {
-                    rcSteiner->setParent(curSteiner);
+                    if (double_equal(curSteiner->x, rcSteiner->x) || double_equal(curSteiner->y, rcSteiner->y))
+                    {
+                        rcSteiner->setParent(curSteiner);
+                    }
+                    else
+                    { // Use L-shape
+                        SteinerPoint *middle = new SteinerPoint(Point_2D(curSteiner->x, rcSteiner->y));
+                        rcSteiner->setParent(middle);
+                        middle->setParent(curSteiner);
+                    }
                 }
                 else
-                { // Use L-shape
-                    SteinerPoint *middle = new SteinerPoint(Point_2D(curSteiner->x, rcSteiner->y));
-                    rcSteiner->setParent(middle);
-                    middle->setParent(curSteiner);
+                {
+                    //! snaking
+                    double snakingWirelength = rc->trr.radius - minManhattanDist(*rcSteiner, *curSteiner);
+                    cout << "snaking!\n";
+                    SteinerPoint *snakePointForCur;
+                    SteinerPoint *snakePointForRightChild;
+                    if (double_equal(curSteiner->x, rcSteiner->x))
+                    {
+                        // boundary check? make sure wire doesn't go outside the chip area
+                        snakePointForCur = new SteinerPoint(Point_2D(curSteiner->x + 0.5 * snakingWirelength, curSteiner->y));
+                        snakePointForRightChild = new SteinerPoint(Point_2D(rcSteiner->x + 0.5 * snakingWirelength, rcSteiner->y));
+                        rcSteiner->setParent(snakePointForRightChild);
+                        snakePointForRightChild->setParent(snakePointForCur);
+                        snakePointForCur->setParent(curSteiner);
+                    }
+                    else if (double_equal(curSteiner->y, rcSteiner->y))
+                    {
+                        snakePointForCur = new SteinerPoint(Point_2D(curSteiner->x, curSteiner->y + 0.5 * snakingWirelength));
+                        snakePointForRightChild = new SteinerPoint(Point_2D(rcSteiner->x, rcSteiner->y + 0.5 * snakingWirelength));
+                        rcSteiner->setParent(snakePointForRightChild);
+                        snakePointForRightChild->setParent(snakePointForCur);
+                        snakePointForCur->setParent(curSteiner);
+                    }
+                    else
+                    {
+                        // Use L-shape
+                        if (double_greater(curSteiner->x, rcSteiner->x)) // curSteiner at right of rc
+                        {
+                            snakePointForCur = new SteinerPoint(Point_2D(curSteiner->x + 0.5 * snakingWirelength, curSteiner->y));
+                            snakePointForRightChild = new SteinerPoint(Point_2D(curSteiner->x + 0.5 * snakingWirelength, rcSteiner->y));
+                            rcSteiner->setParent(snakePointForRightChild);
+                            snakePointForRightChild->setParent(snakePointForCur);
+                            snakePointForCur->setParent(curSteiner);
+                        }
+                        else
+                        {
+                            snakePointForCur = new SteinerPoint(Point_2D(curSteiner->x - 0.5 * snakingWirelength, curSteiner->y));
+                            snakePointForRightChild = new SteinerPoint(Point_2D(curSteiner->x - 0.5 * snakingWirelength, rcSteiner->y));
+                            rcSteiner->setParent(snakePointForRightChild);
+                            snakePointForRightChild->setParent(snakePointForCur);
+                            snakePointForCur->setParent(curSteiner);
+                        }
+                    }
+                    snakePointForCur->snakeNode = true;
+                    snakePointForRightChild->snakeNode = true;
                 }
             }
             else
@@ -557,10 +666,10 @@ void ZSTDMERouter::drawSolution()
     // outfile << "set yrange [0:" << _pChip->get_height() << "]" << endl;
     // outfile << "plot[:][:] '-' w l lt 3 lw 2, '-' with filledcurves closed fc \"grey90\" fs border lc \"red\", '-' with filledcurves closed fc \"yellow\" fs border lc \"black\", '-' w l lt 1" << endl << endl;
 
-    outfile << "plot[:][:]  '-' w l lt 3 lw 2, '-' w p pt 7 ps 1, '-' w p pt 5 ps 2, '-' w l lt 4 lw 2, " << endl
+    outfile << "plot[:][:]  '-' w l lt 3 lw 2, '-' w l lt 4 lw 2, '-' w p pt 6 ps 2, '-' w p pt 7 ps 1, '-' w p pt 5 ps 2, '-' w l lt 4 lw 2, " << endl
             << endl;
 
-    outfile << "# TREE" << endl;
+    outfile << "# TREE NONE SNAKE WIRES" << endl;
     std::function<void(SteinerPoint *)> traceToSource = [&](SteinerPoint *curNode)
     {
         if (curNode->parent == NULL)
@@ -568,13 +677,50 @@ void ZSTDMERouter::drawSolution()
             return;
         }
         auto &nxtNode = curNode->parent;
-        plotLinePLT(outfile, curNode->x, curNode->y, nxtNode->x, nxtNode->y);
+        if (!(curNode->snakeNode ^ nxtNode->snakeNode))
+            plotLinePLT(outfile, curNode->x, curNode->y, nxtNode->x, nxtNode->y);
         traceToSource(nxtNode);
     };
     for (int tapId = 0; tapId < db->dbSinks.size(); tapId++)
     {
         traceToSource(solution[tapId]);
     }
+    outfile << "EOF" << endl;
+
+    outfile << "# TREE SNAKING WIRES" << endl;
+    std::function<void(SteinerPoint *)> traceToSource_SNAKE = [&](SteinerPoint *curNode)
+    {
+        if (curNode->parent == NULL)
+        { // reached source
+            return;
+        }
+        auto &nxtNode = curNode->parent;
+        if ((curNode->snakeNode ^ nxtNode->snakeNode))
+            plotLinePLT(outfile, curNode->x, curNode->y, nxtNode->x, nxtNode->y);
+        traceToSource_SNAKE(nxtNode);
+    };
+    for (int tapId = 0; tapId < db->dbSinks.size(); tapId++)
+    {
+        traceToSource_SNAKE(solution[tapId]);
+    }
+    outfile << "EOF" << endl;
+
+    outfile << "# MergeNodes" << endl;
+    std::function<void(TreeNode *)> postOrderTraversal_merge = [&](TreeNode *curNode)
+    {
+        int curId = curNode->id;
+        if (curNode->leftChild != NULL && curNode->rightChild != NULL)
+        {
+            postOrderTraversal_merge(curNode->leftChild);
+            postOrderTraversal_merge(curNode->rightChild);
+            plotLinePLT(outfile, treeNodeLocation[curNode->id].x, treeNodeLocation[curNode->id].y, treeNodeLocation[curNode->id].x, treeNodeLocation[curNode->id].y);
+        }
+        else
+        {
+            return;
+        }
+    };
+    postOrderTraversal_merge(topology->root);
     outfile << "EOF" << endl;
 
     outfile << "# Sinks" << endl;
@@ -651,7 +797,7 @@ void ZSTDMERouter::metalLayerAssignment()
         {
             int curId = curNode->id;
             curNode->metalLayerIndex = ceil((double(curNode->level) / double(treeLevelCount)) * double(db->dbMetals.size())) - 1; // -1 because index of the vector metals starts from 1
-            assert(curNode->metalLayerIndex<db->dbMetals.size());
+            assert(curNode->metalLayerIndex < db->dbMetals.size());
             preOrderTraversal_SetMetal(curNode->leftChild);
             preOrderTraversal_SetMetal(curNode->rightChild);
         }

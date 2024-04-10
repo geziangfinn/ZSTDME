@@ -65,6 +65,8 @@ public:
     SteinerPoint *leftChild;
     SteinerPoint *rightChild;
     SteinerPoint *parent;
+    bool snakeNode;
+    bool actualMergeNode;
 
     SteinerPoint(Point_2D p)
     {
@@ -73,6 +75,8 @@ public:
         leftChild = NULL;
         rightChild = NULL;
         parent = NULL;
+        snakeNode=false;
+        actualMergeNode=false;
     }
 
     void setLeftChild(SteinerPoint *child) { leftChild = child; }
@@ -218,6 +222,11 @@ inline double minManhattanDist(TreeNode *nodeLeft, TreeNode *nodeRight)
     // assert(distance > 0);
     double distance = minManhattanDist(ms1, ms2);
     return distance;
+}
+
+inline double minManhattanDist(SteinerPoint p1, SteinerPoint p2)
+{
+    return L1Dist(p1, p2);
 }
 
 vector<Segment> segmentCutByBlockage(Segment, Blockage);

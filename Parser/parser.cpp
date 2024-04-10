@@ -85,7 +85,7 @@ void ISPD2009Parser_3D::ReadFile(string filePath, CTSDB *db)
                     Sink tempsink;
                     string dummy;
                     ss2 >> tempsink.name >> dummy >> tempsink.x >> tempsink.y >> tempsink.layer >> tempsink.capacitance; // 3D
-                    tempsink.capacitance *= 1e-15;
+                    // tempsink.capacitance *= 1e-15;
                     tempsink.id = countInst;
                     db->dbSinks.emplace_back(tempsink);
                     countInst++;
@@ -126,7 +126,9 @@ void ISPD2009Parser_3D::ReadFile(string filePath, CTSDB *db)
                     string dummy;
                     // ss2 >> tempblockage.ll.x >> tempblockage.ll.y >> tempblockage.ur.x >> tempblockage.ur.y >> tempblockage.layer; // 3D
                     ss2 >> dummy >> tempMetal.rw >> tempMetal.cw >> tempMetal.lw; // 2D
-                    tempMetal.cw *= 1e-15;
+                    // tempMetal.cw *= 1e-15;
+                    tempMetal.lw *= 1e15;
+                    tempMetal.rw *= 1e15;
                     db->dbMetals.emplace_back(tempMetal);
                     countInst++;
                 }
@@ -135,7 +137,9 @@ void ISPD2009Parser_3D::ReadFile(string filePath, CTSDB *db)
                 metal TSV;
                 string dummy;
                 ss2 >> dummy >> TSV.rw >> TSV.cw >> TSV.lw;
-                TSV.cw *= 1e-15;
+                // TSV.cw *= 1e-15;
+                TSV.lw*=1e15;
+                TSV.rw*=1e15;
                 db->TSV = TSV;
             }
         }
