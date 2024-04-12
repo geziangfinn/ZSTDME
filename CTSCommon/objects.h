@@ -12,9 +12,9 @@ struct metal
 
 struct wire
 {
-    int left_id;
-    int right_id;
-    int metal_index;
+    int leftId;
+    int rightId;
+    int metalIndex;
 };
 
 class Sink : public Point_2D
@@ -66,7 +66,16 @@ public:
     SteinerPoint *rightChild;
     SteinerPoint *parent;
     bool snakeNode;
-    bool actualMergeNode;
+    bool actualMergeNode; // if this node is a actual node in tree topo rather than a steiner node for L shape or snaking
+    bool buffered;
+    bool isTSVNode;
+    int metalLayerIndex;
+    int layer;
+
+    SteinerPoint()
+    {
+        Init();
+    }
 
     SteinerPoint(Point_2D p)
     {
@@ -75,8 +84,24 @@ public:
         leftChild = NULL;
         rightChild = NULL;
         parent = NULL;
-        snakeNode=false;
-        actualMergeNode=false;
+        snakeNode = false;
+        actualMergeNode = false;
+        buffered = false;
+        metalLayerIndex = -1;
+        layer = -1;
+        isTSVNode = false;
+    }
+    void Init()
+    {
+        leftChild = NULL;
+        rightChild = NULL;
+        parent = NULL;
+        snakeNode = false;
+        actualMergeNode = false;
+        buffered = false;
+        metalLayerIndex = -1;
+        layer = -1;
+        isTSVNode = false;
     }
 
     void setLeftChild(SteinerPoint *child) { leftChild = child; }
@@ -263,4 +288,6 @@ void updateMergeCapacitance_multiMetal(TreeNode *nodeMerge, TreeNode *nodeLeft, 
 void RLCCalculation(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double &ea, double &eb, vector<metal> metals, metal TSV);
 double calculateDelayRLC(TreeNode *nodeMerge, TreeNode *nodeChild, float wireLength, vector<metal> metals, metal TSV);
 void radiusAjustment(double &decreased, double &incresed, TreeNode *nodeWithHigherDelay, TreeNode *nodeWithLowerDelay, double step);
+
+void setSteinerNode(SteinerPoint *, TreeNode *);
 #endif

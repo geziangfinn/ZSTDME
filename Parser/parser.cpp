@@ -74,7 +74,7 @@ void ISPD2009Parser_3D::ReadFile(string filePath, CTSDB *db)
             {
                 int numSink;
                 ss >> numSink;
-                int countInst = 0;
+                int countInst = 0;// sink id start from 0 here! but should start from 1 in the output file
                 while (countInst < numSink)
                 {
                     getline(file, line);

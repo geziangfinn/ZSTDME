@@ -1320,7 +1320,7 @@ void RLCCalculation(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight
             cout << endl
                  << "t_b + nodeRight->delay: " << t_b + nodeRight->delay << endl;
         }
-        cout<<"iterated for "<<count<<" times\n";
+        cout << "iterated for " << count << " times\n";
     }
     // // cout<<"Iteration done"<<endl;
     // //printf("原本的 delay: left: %f, right: %f\n", nodeLeft->delay, nodeRight->delay);
@@ -1410,6 +1410,13 @@ void radiusAjustment(double &decreased, double &incresed, TreeNode *nodeWithHigh
             incresed += delta;
         }
     }
+}
+
+void setSteinerNode(SteinerPoint *steiner, TreeNode *treeNode)
+{
+    steiner->buffered = treeNode->buffered;
+    steiner->metalLayerIndex = treeNode->metalLayerIndex;
+    steiner->layer=treeNode->layer;
 }
 
 // void updateMergeDelay_multiMetal(TreeNode *nodeMerge, TreeNode *nodeLeft, TreeNode *nodeRight, double ea, double eb, vector<metal> metals, metal TSV)

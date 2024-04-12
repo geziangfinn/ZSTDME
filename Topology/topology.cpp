@@ -8,7 +8,7 @@ void TreeTopology::buildTopoUsingNearestNeighborGraph()
     for (Sink curSink : db->dbSinks)
     {
         NngNode node;
-        assert(index == curSink.id);
+        assert(index == curSink.id);// sink id start from 0!
 
         node.x = curSink.x;
         node.y = curSink.y;

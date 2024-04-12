@@ -471,6 +471,10 @@ void ZSTDMERouter::buildSolution()
             lcSteiner->actualMergeNode = true;
             rcSteiner->actualMergeNode = true;
 
+            setSteinerNode(lcSteiner, lc);
+            setSteinerNode(rcSteiner, rc);
+            setSteinerNode(curSteiner, curNode);
+
             if (fullSolution)
             {
                 // Connect lc
@@ -488,6 +492,7 @@ void ZSTDMERouter::buildSolution()
                         SteinerPoint *middle = new SteinerPoint(Point_2D(curSteiner->x, lcSteiner->y));
                         lcSteiner->setParent(middle);
                         middle->setParent(curSteiner);
+                        middle->metalLayerIndex = curSteiner->metalLayerIndex;
                     }
                 }
                 else
@@ -536,6 +541,8 @@ void ZSTDMERouter::buildSolution()
                     }
                     snakePointForCur->snakeNode = true;
                     snakePointForLeftChild->snakeNode = true;
+                    snakePointForCur->metalLayerIndex = curSteiner->metalLayerIndex;
+                    snakePointForLeftChild->metalLayerIndex = curSteiner->metalLayerIndex;
                 }
 
                 // Connect rc
@@ -599,6 +606,8 @@ void ZSTDMERouter::buildSolution()
                     }
                     snakePointForCur->snakeNode = true;
                     snakePointForRightChild->snakeNode = true;
+                    snakePointForCur->metalLayerIndex = curSteiner->metalLayerIndex;
+                    snakePointForRightChild->metalLayerIndex = curSteiner->metalLayerIndex;
                 }
             }
             else
@@ -763,6 +772,323 @@ void ZSTDMERouter::drawSolution()
 void ZSTDMERouter::buildSolution_ISPD()
 {
     // todo: implement me
+    vector<wire> wires;
+    vector<wire> bufferWires;
+
+    vector<pair<int, Point_2D>> bufferNodes; // not inserted into the tree, just for output
+
+    set<pair<int, int>> addedTSV;    // store two nodenames(//!must be actual merge nodes!) as a pair. if there is a pair in the set, there is a tsv between the two nodes
+    set<pair<int, int>> addedBuffer; // similar with addedTSV
+    set<pair<int, int>> addedWire;   // wires between these two actual merge nodes are already added
+
+    wires.clear();
+    bufferWires.clear();
+
+    // here the ID is used as nodename in the output file, and should start from 1 because nodename 0 is reserved for source
+    map<SteinerPoint *, int> steinerPointToIdMap;
+    map<int, SteinerPoint *> IDtoSteinerPointMap;
+
+    int topoNodeCount = topology->nodeCount;
+    assert(topology->nodeCount == solution.size());
+
+    ///////////////////////////////////////////////////////
+    // !Step 0: assign node name for sink and merge nodes
+    ///////////////////////////////////////////////////////
+
+    for (int i = 0; i < topoNodeCount; i++)
+    {
+        SteinerPoint *curSteiner = solution[i];
+        steinerPointToIdMap[curSteiner] = i + 1; // nodename 0 is reserved for source
+        IDtoSteinerPointMap[i + 1] = curSteiner;
+
+        // so for sink nodes, ID = treeNode.id + 1, since i == treeNode.id, here treeNode is the corresponding tree node of the steiner node in the vector solution
+    }
+
+    ///////////////////////////////////////////////////////
+    // !Step 1: assign node name for non merge(sink) nodes
+    ///////////////////////////////////////////////////////
+
+    int nodeName = topoNodeCount + 1; // node name should start form topoNodeCount+1 now; //! this variable is used for all following operations!!!
+
+    std::function<void(SteinerPoint *)> traceToSource_assignNodeName = [&](SteinerPoint *curNode)
+    {
+        if (curNode->parent == NULL)
+        { // reached source
+            return;
+        }
+
+        if (steinerPointToIdMap.find(curNode) == steinerPointToIdMap.end())
+        {
+            // curNode is a snaking or L shape node that was not assigned a node name
+            steinerPointToIdMap[curNode] = nodeName;
+            IDtoSteinerPointMap[nodeName] = curNode;
+            nodeName++;
+        }
+
+        auto &nxtNode = curNode->parent;
+        traceToSource_assignNodeName(nxtNode);
+    };
+    for (int tapId = 0; tapId < db->dbSinks.size(); tapId++)
+    {
+        traceToSource_assignNodeName(solution[tapId]);
+    }
+
+    ///////////////////////////////////////////////////////
+    // !Step 2: add TSV nodes and assign node name for TSV nodes
+    ///////////////////////////////////////////////////////
+    //? use pseudo nodes, just like buffer nodes?
+    std::function<void(SteinerPoint *)> traceToSource_addTSVNode = [&](SteinerPoint *curNode)
+    {
+        //! TSV node is added right before next merge node!
+        if (curNode->parent == NULL)
+        { // reached source
+            return;
+        }
+        //! inserting TSV
+        assert(curNode->actualMergeNode && !curNode->snakeNode);
+        assert(curNode->parent);
+        SteinerPoint *nextMergeNode;
+        SteinerPoint *TSV = NULL;
+
+        if (curNode->parent->snakeNode) // snaking, and there must be 2 snaking nodes
+        {
+            assert(curNode->parent->parent->snakeNode);
+            // cur -> snakenode1 -> snakenode2 -> mergenode
+            SteinerPoint *snakeNodeBeforeNextMergeNode = curNode->parent->parent;
+            nextMergeNode = snakeNodeBeforeNextMergeNode->parent;
+            assert(nextMergeNode->actualMergeNode);
+
+            if (!(curNode->layer == nextMergeNode->layer))
+            {
+                if (addedTSV.find(make_pair(steinerPointToIdMap[curNode], steinerPointToIdMap[nextMergeNode])) == addedTSV.end()) // TSV not inserted yet
+                {
+
+                    Point_2D TSVnodeLocation = determineTSVLocation(snakeNodeBeforeNextMergeNode, nextMergeNode);
+
+                    TSV = new SteinerPoint(TSVnodeLocation);
+
+                    snakeNodeBeforeNextMergeNode->parent = TSV;
+
+                    TSV->isTSVNode = true;
+                    TSV->metalLayerIndex = db->dbMetals.size(); //!!!
+                    TSV->parent = nextMergeNode;
+                    addedTSV.insert(make_pair(steinerPointToIdMap[curNode], steinerPointToIdMap[nextMergeNode])); //! curNode as first, nextMergeNode as second!
+                }
+            }
+        }
+        else if (curNode->parent->actualMergeNode)
+        {
+            // cur -> mergenode
+            nextMergeNode = curNode->parent;
+            assert(nextMergeNode->actualMergeNode);
+            if (!(curNode->layer == nextMergeNode->layer))
+            {
+                if (addedTSV.find(make_pair(steinerPointToIdMap[curNode], steinerPointToIdMap[nextMergeNode])) == addedTSV.end()) // TSV not inserted yet
+                {
+
+                    Point_2D TSVnodeLocation = determineTSVLocation(curNode, nextMergeNode);
+
+                    TSV = new SteinerPoint(Point_2D(TSVnodeLocation));
+
+                    curNode->parent = TSV;
+
+                    TSV->isTSVNode = true;
+                    TSV->metalLayerIndex = db->dbMetals.size(); //!!!
+                    TSV->parent = nextMergeNode;
+                    addedTSV.insert(make_pair(steinerPointToIdMap[curNode], steinerPointToIdMap[nextMergeNode])); //! curNode as first, nextMergeNode as second!
+                }
+            }
+        }
+        else // no snaking, just L shape
+        {
+            // cur -> middleNodeForLshape -> mergenode
+            assert(curNode->parent->parent->actualMergeNode);
+            SteinerPoint *middleNode = curNode->parent;
+            nextMergeNode = curNode->parent->parent;
+            assert(nextMergeNode->actualMergeNode);
+            if (!(curNode->layer == nextMergeNode->layer))
+            {
+                if (addedTSV.find(make_pair(steinerPointToIdMap[curNode], steinerPointToIdMap[nextMergeNode])) == addedTSV.end()) // TSV not inserted yet
+                {
+
+                    Point_2D TSVnodeLocation = determineTSVLocation(middleNode, nextMergeNode);
+
+                    TSV = new SteinerPoint(Point_2D(TSVnodeLocation));
+
+                    middleNode->parent = TSV;
+
+                    TSV->isTSVNode = true;
+                    TSV->metalLayerIndex = db->dbMetals.size(); //!!!
+                    TSV->parent = nextMergeNode;
+
+                    addedTSV.insert(make_pair(steinerPointToIdMap[curNode], steinerPointToIdMap[nextMergeNode])); //! curNode as first, nextMergeNode as second!
+                    // 保持curNode的node name在前，这样能够避免重复吗？即 （1,2）,(2,1)类的重复
+                }
+            }
+        }
+        //! TSV inserted
+        if (TSV)
+        {
+            steinerPointToIdMap[TSV] = nodeName;
+            IDtoSteinerPointMap[nodeName] = TSV;
+            nodeName++;
+        }
+
+        traceToSource_addTSVNode(nextMergeNode);
+    };
+    for (int tapId = 0; tapId < db->dbSinks.size(); tapId++)
+    {
+        traceToSource_addTSVNode(solution[tapId]);
+    }
+
+    //! be aware of wire direction
+    ///////////////////////////////////////////////////////
+    // !Step 3: add buffer nodes(pseudo, not inserted to the steiner tree) and buffer wires
+    ///////////////////////////////////////////////////////
+    std::function<void(SteinerPoint *)> traceToSource_addBuffers = [&](SteinerPoint *curNode)
+    {
+        if (curNode->parent == NULL)
+        { // reached source
+            return;
+        }
+
+        assert(curNode->actualMergeNode);
+
+        SteinerPoint *nextMergeNode;
+        SteinerPoint *nodeBeforeNextMergeNode = curNode; // could be merge node, snake node, TSV node or L shape node after TSV insertion
+
+        while (!(nodeBeforeNextMergeNode->parent->actualMergeNode))
+        {
+            nodeBeforeNextMergeNode = nodeBeforeNextMergeNode->parent;
+        }
+        nextMergeNode = nodeBeforeNextMergeNode->parent;
+        assert(nextMergeNode->actualMergeNode);
+
+        if (nextMergeNode->buffered)
+        {
+            if (addedBuffer.find(make_pair(steinerPointToIdMap[curNode], steinerPointToIdMap[nextMergeNode])) == addedBuffer.end()) // buffer not inserted yet
+            {
+                //! two buffers(inverters) so the signal is not inverted
+                Point_2D firstBufferNode;
+                int firstBufferNodeName = nodeName;
+                firstBufferNode.x = nextMergeNode->x;
+                firstBufferNode.y = nextMergeNode->y;
+                bufferNodes.push_back(make_pair(firstBufferNodeName, firstBufferNode));
+                nodeName++;
+
+                Point_2D secondBufferNode;
+                int secondBufferNodeName = nodeName;
+                secondBufferNode = firstBufferNode;
+                bufferNodes.push_back(make_pair(secondBufferNodeName, secondBufferNode));
+                nodeName++;
+
+                // nodeBeforeNextMergeNode -> buffer1 -> buffer2 -> nextMergeNode
+                //! be aware of wire direction
+                wire wire1;
+                wire1.leftId = firstBufferNodeName;
+                wire1.rightId = steinerPointToIdMap[nodeBeforeNextMergeNode];
+                wire1.metalIndex = nextMergeNode->metalLayerIndex; // !!!!this wire is not inverter!!!!
+
+                wire wire2;
+                wire1.leftId = secondBufferNodeName;
+                wire1.rightId = firstBufferNodeName;
+                wire1.metalIndex = 0; // 0 for all buffers
+
+                wire wire3;
+                wire3.leftId = steinerPointToIdMap[nextMergeNode];
+                wire1.rightId = secondBufferNodeName;
+                wire1.metalIndex = 0; // 0 for all buffers
+
+                bufferWires.push_back(wire1);
+                bufferWires.push_back(wire2);
+                bufferWires.push_back(wire3);
+
+                addedBuffer.insert(make_pair(steinerPointToIdMap[curNode], steinerPointToIdMap[nextMergeNode]));
+            }
+        }
+
+        traceToSource_addBuffers(nextMergeNode);
+    };
+    for (int tapId = 0; tapId < db->dbSinks.size(); tapId++)
+    {
+        traceToSource_addBuffers(solution[tapId]);
+    }
+
+    ///////////////////////////////////////////////////////
+    // !Step 4: add all other wires(including TSV wires)
+    ///////////////////////////////////////////////////////
+    std::function<void(SteinerPoint *)> traceToSource_addWires = [&](SteinerPoint *curNode)
+    {
+        if (curNode->parent == NULL)
+        { // reached source
+            return;
+        }
+
+        assert(curNode->actualMergeNode);
+
+        SteinerPoint *nextMergeNode;
+        SteinerPoint *nodeBeforeNextMergeNode = curNode; // could be merge node, snake node, TSV node or L shape node after TSV insertion
+
+        while (!(nodeBeforeNextMergeNode->parent->actualMergeNode))
+        {
+            nodeBeforeNextMergeNode = nodeBeforeNextMergeNode->parent;
+        }
+        nextMergeNode = nodeBeforeNextMergeNode->parent;
+
+        assert(nextMergeNode->actualMergeNode);
+
+        if (nextMergeNode->buffered)
+        {
+            if (curNode->layer == nextMergeNode->layer)
+            {
+                // no TSV but buffered
+                SteinerPoint *wireRight;
+                SteinerPoint *wireLeft;
+                while ()
+            }
+            else
+            {
+                // buffered and there is TSV
+                // TSV->parent = nextMergeNode
+                assert(nodeBeforeNextMergeNode->isTSVNode);
+            }
+        }
+        else
+        {
+            if (curNode->layer == nextMergeNode->layer)
+            {
+                // no TSV and no buffer
+                SteinerPoint *wireRight=curNode;
+                SteinerPoint *wireLeft=curNode->parent;
+                wire tempWire;
+                
+                while ()
+            }
+            else
+            {
+                // no buffer but there is TSV
+                // TSV->parent = nextMergeNode
+                assert(nodeBeforeNextMergeNode->isTSVNode);
+            }
+        }
+
+        // wire curWire;
+        // curWire.leftId = steinerPointToIdMap[nxtNode];
+        // curWire.rightId = steinerPointToIdMap[curNode];
+        // curWire.metalIndex = nxtNode->metalLayerIndex;
+
+        // wires.push_back(curWire);
+
+        traceToSource_addWires(nextMergeNode);
+    };
+    for (int tapId = 0; tapId < db->dbSinks.size(); tapId++)
+    {
+        traceToSource_addWires(solution[tapId]);
+    }
+
+    ///////////////////////////////////////////////////////
+    // !Step 5: add source buffers
+    ///////////////////////////////////////////////////////
 }
 
 void ZSTDMERouter::metalLayerAssignment()
@@ -796,8 +1122,8 @@ void ZSTDMERouter::metalLayerAssignment()
         if (curNode)
         {
             int curId = curNode->id;
-            curNode->metalLayerIndex = ceil((double(curNode->level) / double(treeLevelCount)) * double(db->dbMetals.size())) - 1; // -1 because index of the vector metals starts from 1
-            assert(curNode->metalLayerIndex < db->dbMetals.size());
+            curNode->metalLayerIndex = ceil((double(curNode->level) / double(treeLevelCount)) * double(db->dbMetals.size())) - 1; // -1 because index of the vector dbMetals starts from 0
+            assert(curNode->metalLayerIndex < db->dbMetals.size());                                                               //!
             preOrderTraversal_SetMetal(curNode->leftChild);
             preOrderTraversal_SetMetal(curNode->rightChild);
         }
@@ -859,6 +1185,114 @@ void ZSTDMERouter::NearestAssign(TreeNode *node)
 
     NearestAssign(node->leftChild);
     NearestAssign(node->rightChild);
+}
+
+SteinerPoint *ZSTDMERouter::insertTSVNode(SteinerPoint *curNode, set<pair<int, int>> &addedTSV)
+{
+    // assert(curNode->actualMergeNode && !curNode->snakeNode);
+    // assert(curNode->parent);
+    // SteinerPoint *mergeNode;
+    // SteinerPoint *TSV;
+
+    // if (curNode->parent->snakeNode) // snaking, and there must be 2 snaking nodes
+    // {
+    //     assert(curNode->parent->parent->snakeNode);
+    //     // cur -> snakenode1 -> snakenode2 -> mergenode
+    //     SteinerPoint *snakeNodeBeforeNextMergeNode = curNode->parent->parent;
+    //     mergeNode = snakeNodeBeforeNextMergeNode->parent;
+    //     assert(mergeNode->actualMergeNode);
+
+    //     if (curNode->layer == mergeNode->layer ||)
+    //     {
+    //         return mergeNode;
+    //     }
+
+    //     Point_2D TSVnodeLocation = determineTSVLocation(snakeNodeBeforeNextMergeNode, mergeNode);
+
+    //     TSV = new SteinerPoint(TSVnodeLocation);
+
+    //     snakeNodeBeforeNextMergeNode->parent = TSV;
+
+    //     TSV->isTSVNode = true;
+    //     TSV->metalLayerIndex = mergeNode->metalLayerIndex;
+    //     TSV->parent = mergeNode;
+    // }
+    // else if (curNode->parent->actualMergeNode)
+    // {
+    //     // cur -> mergenode
+    //     mergeNode = curNode->parent;
+    //     assert(mergeNode->actualMergeNode);
+    //     if (curNode->layer == mergeNode->layer)
+    //     {
+    //         return mergeNode;
+    //     }
+
+    //     Point_2D TSVnodeLocation = determineTSVLocation(curNode, mergeNode);
+
+    //     TSV = new SteinerPoint(Point_2D(TSVnodeLocation));
+
+    //     curNode->parent = TSV;
+
+    //     TSV->isTSVNode = true;
+    //     TSV->metalLayerIndex = mergeNode->metalLayerIndex;
+    //     TSV->parent = mergeNode;
+    // }
+    // else // no snaking, just L shape
+    // {
+    //     // cur -> middleNodeForLshape -> mergenode
+    //     assert(curNode->parent->parent->actualMergeNode);
+    //     SteinerPoint *middleNode = curNode->parent;
+    //     mergeNode = curNode->parent->parent;
+    //     assert(mergeNode->actualMergeNode);
+    //     if (curNode->layer == mergeNode->layer)
+    //     {
+    //         return mergeNode;
+    //     }
+
+    //     Point_2D TSVnodeLocation = determineTSVLocation(middleNode, mergeNode);
+
+    //     TSV = new SteinerPoint(Point_2D(TSVnodeLocation));
+
+    //     middleNode->parent = TSV;
+
+    //     TSV->isTSVNode = true;
+    //     TSV->metalLayerIndex = mergeNode->metalLayerIndex;
+    //     TSV->parent = mergeNode;
+    // }
+    // return TSV;
+}
+
+Point_2D ZSTDMERouter::determineTSVLocation(SteinerPoint *before, SteinerPoint *merge)
+{
+    // before->TSV->merge
+    // the before node must have same x or y with merge
+    assert(double_equal(before->x, merge->x) || double_equal(before->y, merge->y));
+    Point_2D TSVlocation;
+    if (double_equal(before->x, merge->x))
+    {
+        TSVlocation.x = before->x;
+        if (double_less(before->y, merge->y))
+        {
+            TSVlocation.y = merge->y - 1.0;
+        }
+        else
+        {
+            TSVlocation.y = merge->y + 1.0;
+        }
+    }
+    else
+    {
+        TSVlocation.y = before->y;
+        if (double_less(before->x, merge->x))
+        {
+            TSVlocation.x = merge->x - 1.0;
+        }
+        else
+        {
+            TSVlocation.x = merge->x + 1.0;
+        }
+    }
+    return TSVlocation;
 }
 
 // Segment ZSTDMERouter::TRRintersectTRR(TRR &trr1, TRR &trr2)

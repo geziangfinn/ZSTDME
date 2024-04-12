@@ -81,6 +81,8 @@ public:
 private:
     void DLE_loop(TreeNode *node);
     void NearestAssign(TreeNode *node);
+    SteinerPoint* insertTSVNode(SteinerPoint*,set<pair<int,int>>& );
+    Point_2D determineTSVLocation(SteinerPoint*,SteinerPoint*);
 };
 
 class BSTDMERouter
