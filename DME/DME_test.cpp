@@ -78,4 +78,5 @@ int main(int argc, char *argv[])
     cout << padding << "Finished DME" << padding << endl;
     router->buildSolution();
     router->drawSolution();
+    router->buildSolution_ISPD();
 }

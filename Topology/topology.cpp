@@ -133,6 +133,7 @@ void TreeTopology::initTreeNodes()
         curRoot->loadCapacitance = curSink.capacitance;
         curRoot->trr = TRR(Segment(curSink), 0.0); // initilize TRR here!! so we can merge tree nodes
         curRoot->delay = 0.0;                      // initialize delay here!!
+        curRoot->layer=curSink.layer;
         globalTreeNodes.emplace_back(curRoot);
         index++;
     }
